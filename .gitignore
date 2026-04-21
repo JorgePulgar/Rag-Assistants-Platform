@@ -44,6 +44,6 @@ logs/
 # OS
 Thumbs.db
 
-# Uploads temporales
+# Temporary uploads
 uploads/
 tmp/

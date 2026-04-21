@@ -1,44 +1,44 @@
 ---
 name: azure-integration
-description: Convenciones para integrar Azure AI Foundry (LLM + embeddings) y Azure AI Search. Úsala cuando escribas clientes a Azure, manejes credenciales, crees/borres índices, o cuando un error de Azure necesite tratamiento. No la uses para lógica de dominio que no toque Azure directamente.
+description: Conventions for integrating Azure AI Foundry (LLM + embeddings) and Azure AI Search. Use it when writing Azure clients, handling credentials, creating/deleting indexes, or when an Azure error needs explicit handling. Do not use it for domain logic that does not touch Azure directly.
 ---
 
-# Azure Integration — Convenciones para clientes Azure
+# Azure Integration — Conventions for Azure clients
 
-## Cuándo activar esta skill
+## When to activate
 
-Activa esta skill cuando la tarea toque:
-- Escritura o modificación de `clients/azure_openai.py` o `clients/azure_search.py`.
-- Creación, borrado o modificación de índices en Azure AI Search.
-- Manejo de errores de red o autenticación contra Azure.
-- Configuración de variables de entorno relacionadas con Azure.
-- Cualquier test que requiera llamadas reales a Azure.
+Activate this skill when the task touches:
+- Writing or modifying `clients/azure_openai.py` or `clients/azure_search.py`.
+- Creating, deleting, or modifying Azure AI Search indexes.
+- Network or authentication error handling against Azure.
+- Environment variable configuration for Azure.
+- Any test that requires real Azure calls.
 
-**No** la actives para: lógica de RAG pura (usa `rag-patterns`),
-endpoints sin tocar Azure, UI.
+**Do not** activate for: pure RAG logic (use `rag-patterns`), endpoints
+that do not touch Azure, UI.
 
-## Autenticación
+## Authentication
 
-Se usa **API Key** para ambos servicios en este proyecto. Managed Identity
-o Entra ID sería mejor en producción, pero para MVP con crédito académico
-la API key es suficiente y simple.
+We use **API Key** for both services in this project. Managed Identity or
+Entra ID would be preferable in production, but for an MVP with academic
+credits the API key is sufficient and simpler.
 
-Variables de entorno:
+Environment variables:
 ```
-AZURE_OPENAI_ENDPOINT=https://tu-recurso.openai.azure.com/
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=...
 AZURE_OPENAI_API_VERSION=2024-10-21
 
-AZURE_SEARCH_ENDPOINT=https://tu-search.search.windows.net
+AZURE_SEARCH_ENDPOINT=https://your-search.search.windows.net
 AZURE_SEARCH_API_KEY=...
 ```
 
-Nunca leer `os.getenv` directamente desde módulos de negocio. Siempre a
-través de `config.py` con Pydantic Settings.
+Never read `os.getenv` directly from business modules. Always go through
+`config.py` using Pydantic Settings.
 
-## Cliente de Azure AI Foundry (LLM + embeddings)
+## Azure AI Foundry client (LLM + embeddings)
 
-Usa el SDK oficial de `openai` con configuración para Azure:
+Use the official `openai` SDK with Azure configuration:
 
 ```python
 from openai import AzureOpenAI
@@ -51,9 +51,9 @@ def get_openai_client() -> AzureOpenAI:
     )
 ```
 
-**IMPORTANTE**: en las llamadas, el parámetro `model` es el **nombre del
-deployment** (no el nombre del modelo base). Esto es una particularidad
-de Azure que confunde:
+**IMPORTANT**: on calls, the `model` parameter is the **deployment name**
+(not the base model name). This is an Azure particularity that often
+confuses:
 
 ```python
 client.chat.completions.create(
@@ -67,9 +67,9 @@ client.embeddings.create(
 )
 ```
 
-## Cliente de Azure AI Search
+## Azure AI Search client
 
-Usa `azure-search-documents`:
+Use `azure-search-documents`:
 
 ```python
 from azure.search.documents import SearchClient
@@ -90,9 +90,9 @@ def get_search_client(index_name: str) -> SearchClient:
     )
 ```
 
-## Schema del índice (plantilla)
+## Index schema (template)
 
-Todo asistente usa el mismo schema. Centraliza en una función:
+Every assistant uses the same schema. Centralise it in a function:
 
 ```python
 from azure.search.documents.indexes.models import (
@@ -146,37 +146,35 @@ def build_index_schema(index_name: str) -> SearchIndex:
     )
 ```
 
-## Nombres de índice
+## Index naming
 
-Regex de Azure AI Search: `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, longitud
-2-128.
+Azure AI Search regex: `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, length 2–128.
 
-Convención del proyecto: `assistant-{uuid_hex_sin_guiones}`.
+Project convention: `assistant-{uuid_hex_without_dashes}`.
 
 ```python
 def build_index_name(assistant_id: UUID) -> str:
     return f"assistant-{assistant_id.hex}"
 ```
 
-## Manejo de errores Azure
+## Azure error handling
 
-Los errores de Azure son, por orden de frecuencia:
+Azure errors, in rough order of frequency:
 
-1. **Rate limit (429)**: `openai.RateLimitError` o
-   `azure.core.exceptions.HttpResponseError` con status 429. Reintentar
-   con backoff exponencial (3 intentos: 1s, 2s, 4s).
+1. **Rate limit (429)**: `openai.RateLimitError` or
+   `azure.core.exceptions.HttpResponseError` with status 429. Retry with
+   exponential backoff (3 attempts: 1s, 2s, 4s).
 
-2. **Autenticación (401)**: credencial inválida. No reintentar; loggear
-   y propagar como 502 al cliente.
+2. **Authentication (401)**: invalid credential. Do not retry; log and
+   surface as 502 to the client.
 
-3. **Recurso no encontrado (404)**: para operaciones de índice significa
-   que el índice no existe. En CREATE es esperado; en READ/DELETE hay que
-   diferenciar caso legítimo de bug.
+3. **Resource not found (404)**: for index operations this means the
+   index does not exist. Expected on CREATE; on READ/DELETE, distinguish
+   legitimate case from bug.
 
-4. **Timeout**: por defecto 60s, configurable. Si falla, loggear y
-   propagar.
+4. **Timeout**: default 60s, configurable. On failure, log and surface.
 
-Patrón recomendado:
+Recommended pattern:
 
 ```python
 from openai import RateLimitError, APIError
@@ -198,9 +196,10 @@ def call_with_retry(fn, *args, max_retries=3, **kwargs):
     raise last_exc
 ```
 
-## Tests que tocan Azure
+## Tests that hit Azure
 
-Marca con `pytest.mark.integration` y salta si faltan credenciales:
+Mark them with `pytest.mark.integration` and skip when credentials are
+missing:
 
 ```python
 import pytest
@@ -220,25 +219,25 @@ def test_embedding_roundtrip():
     assert len(response.data[0].embedding) == 1536
 ```
 
-Para los tests de aislamiento, usar prefijo `test-` en el índice y
-limpiar al final con un `finally`:
+For isolation tests, use a `test-` prefix on the index name and clean up
+in a `finally` block:
 
 ```python
 def test_isolation():
     index_a = f"test-assistant-a-{uuid4().hex[:8]}"
     index_b = f"test-assistant-b-{uuid4().hex[:8]}"
     try:
-        # ... crear índices, subir docs, verificar aislamiento
+        # ... create indexes, upload docs, verify isolation
     finally:
         index_client.delete_index(index_a)
         index_client.delete_index(index_b)
 ```
 
-## Checklist antes de hacer merge de código Azure
+## Checklist before merging Azure code
 
-- [ ] Las credenciales se leen desde `settings`, no `os.getenv` directo.
-- [ ] El nombre del deployment (no el modelo) se pasa en `model=`.
-- [ ] Hay manejo explícito de rate limits.
-- [ ] Los tests de integración están marcados y pueden saltarse.
-- [ ] Los índices de test tienen prefijo y se limpian.
-- [ ] No hay credenciales hardcoded ni en logs.
+- [ ] Credentials are read from `settings`, not direct `os.getenv`.
+- [ ] The deployment name (not the model name) is passed in `model=`.
+- [ ] Rate limits are explicitly handled.
+- [ ] Integration tests are marked and can be skipped.
+- [ ] Test indexes are prefixed and cleaned up.
+- [ ] No hardcoded credentials, including in logs.

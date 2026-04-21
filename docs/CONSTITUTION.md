@@ -1,93 +1,115 @@
-# CONSTITUTION — Principios no negociables del proyecto
+# CONSTITUTION — Non-negotiable Project Principles
 
-Este documento recoge las reglas que **no se discuten** durante el desarrollo.
-Cualquier decisión técnica debe respetar estos principios. Si una propuesta
-los viola, la propuesta se rechaza — no al revés.
+This document captures the rules that are **not up for discussion** during
+development. Every technical decision must respect these principles. If a
+proposal violates them, the proposal is rejected — not the other way around.
 
 ---
 
-## 1. Aislamiento estructural por asistente
+## 1. Structural isolation per assistant
 
-Cada asistente tiene un **índice propio en Azure AI Search** nombrado de forma
-determinista a partir de su ID. El aislamiento es **estructural**, no lógico:
-no se comparte un índice global con filtros por `assistant_id`.
+Each assistant has its own **Azure AI Search index**, named deterministically
+from its ID. Isolation is **structural**, not logical: we never share a
+global index with `assistant_id` filters.
 
-**Razón**: un bug en un filtro contamina todas las respuestas. Un bug en el
-nombrado del índice falla ruidosamente en vez de silenciosamente. El enunciado
-exige demostrar aislamiento en la demo; esta decisión lo hace trivial.
+**Rationale**: a bug in a filter contaminates every answer silently. A bug
+in index naming fails loudly instead. The project brief explicitly requires
+demonstrating isolation in the demo; this decision makes it trivial.
 
-**Consecuencia**: crear un asistente implica crear un índice. Borrar un
-asistente implica borrar el índice. Estas operaciones son transaccionales con
-la fila en SQLite.
+**Consequence**: creating an assistant implies creating an index. Deleting
+an assistant implies deleting the index. These operations are transactional
+with the SQLite row.
 
-## 2. Citas siempre estructuradas
+## 2. Citations are always structured
 
-Las respuestas del chat devuelven citas como **objetos JSON estructurados**,
-nunca como strings embebidos en el texto. El schema mínimo es:
+Chat responses return citations as **structured JSON objects**, never as
+inline strings. Minimum schema:
 
 ```json
 {
   "document_id": "uuid",
-  "document_name": "contrato_2024.pdf",
+  "document_name": "contract_2024.pdf",
   "page": 3,
-  "chunk_text": "fragmento relevante, máximo 300 caracteres"
+  "chunk_text": "relevant excerpt, max 300 characters"
 }
 ```
 
-**Razón**: el frontend renderiza las citas como bloques expandibles. Strings
-embebidos del tipo `[Doc 1, pág. 3]` son imposibles de renderizar bien y se
-rompen en cuanto el LLM decide escribirlos diferente.
+**Rationale**: the frontend renders citations as expandable blocks. Inline
+strings like `[Doc 1, p. 3]` cannot be rendered reliably and break as soon
+as the LLM decides to phrase them differently.
 
-## 3. No inventar respuestas
+## 3. Never fabricate answers
 
-Si la recuperación no devuelve chunks con score suficiente, el asistente
-responde explícitamente que **no tiene información** para contestar.
-El prompt del sistema incluye esta instrucción y el endpoint devuelve la
-respuesta sin citas (array vacío).
+If retrieval does not return chunks above the score threshold, the assistant
+explicitly replies that it **does not have the information** to answer. The
+system prompt enforces this, and the endpoint returns the response with an
+empty citation array.
 
-La respuesta de "no sé" debe ser **informativa**: qué buscó, por qué no
-encontró. No un string genérico.
+The "I don't know" response must be **informative**: what was searched, why
+nothing was found. Not a generic string.
 
-**Razón**: el enunciado lo exige explícitamente. Además, una alucinación
-en la demo invalida todo el proyecto ante el evaluador.
+**Rationale**: the brief explicitly requires this behaviour. On top of that,
+a hallucination during the demo invalidates the whole project in front of
+the evaluator.
 
-## 4. Persistencia explícita del chat
+## 4. Explicit and persistent conversational memory
 
-Toda conversación se guarda en SQLite con `conversation_id`, `assistant_id`,
-y los mensajes asociados con rol (`user` | `assistant`), contenido, citas
-(si aplica) y timestamp. Al reanudar una conversación, se carga el historial
-completo desde BD — nunca se depende de estado en memoria del servidor.
+Conversational memory is a **core feature** of this project, not a
+side-effect. Every conversation stores in SQLite its `conversation_id`,
+`assistant_id`, and every message with its role (`user` | `assistant`),
+content, citations (when applicable), and timestamp.
 
-**Razón**: el backend debe poder reiniciarse sin perder conversaciones.
-Es un requisito del enunciado y una buena práctica básica.
+**Requirements**:
+- When resuming a conversation, the full history is loaded from the
+  database — we never rely on in-memory server state.
+- The assistant's LLM call always includes the last
+  `HISTORY_MAX_MESSAGES` messages as prior context, so the assistant
+  genuinely "remembers" what was said earlier in the same conversation.
+- Conversations survive backend restarts, browser closes, and machine
+  reboots. The only state required is the SQLite file on disk and the
+  Azure Search indexes.
+- A user can list their previous conversations per assistant, reopen any
+  of them, and continue exactly where they left off.
 
-## 5. Tests mínimos en la lógica core
+**Explicit non-goal**: we do not implement cross-conversation memory
+(the assistant remembering facts about the user across separate
+conversations). That is a different system entirely and is out of scope
+for this MVP. It is documented as a known limitation in the final README.
 
-No se exige cobertura alta, pero **sí** tests sobre:
-- Aislamiento: crear dos asistentes, subir docs distintos a cada uno,
-  verificar que una query a uno no devuelve chunks del otro.
-- Parsing: al menos un test por tipo de documento soportado.
-- Construcción del prompt RAG: verificar que incluye instrucciones + historial
-  + contexto y que el "no sé" se activa con contexto vacío.
+**Rationale**: the brief requires persistence explicitly, and a stateless
+or in-memory chat would fail acceptance criterion 5 (close the browser,
+reopen, continue the same conversation). On top of that, stateful-on-disk
+is a basic good practice that signals architectural maturity.
 
-**Razón**: estos son los puntos donde un bug silencioso te cuesta la nota.
-Un test que verifique el aislamiento en 10 segundos te ahorra un drama en
-la demo.
+## 5. Minimum tests on core logic
 
-## 6. Variables de entorno para todo lo configurable
+We do not require high coverage, but we **do require** tests for:
 
-Cero credenciales en el código. Cero URLs hardcoded. Todo vive en `.env`
-documentado en `.env.example`. Esto incluye: endpoints de Azure, API keys,
-nombre del índice base, parámetros de chunking, modelo LLM a usar.
+- Isolation: create two assistants, upload different documents to each,
+  verify that a query to one never retrieves chunks from the other.
+- Parsing: at least one test per supported document type.
+- RAG prompt construction: verify that the prompt includes instructions +
+  history + context, and that the "I don't know" path triggers on empty
+  context.
 
-## 7. Commits incrementales con mensajes convencionales
+**Rationale**: these are the spots where a silent bug costs you the grade.
+An isolation test that runs in ten seconds saves a dramatic moment in the
+demo.
 
-`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`. Un commit por
-tarea coherente. Push diario como mínimo. El histórico del repo es parte
-del entregable, no un artefacto.
+## 6. Environment variables for anything configurable
 
-## 8. El README final se escribe al final
+Zero credentials in code. Zero hardcoded URLs. Everything lives in `.env`,
+documented in `.env.example`. This includes Azure endpoints, API keys, base
+index naming, chunking parameters, and LLM deployment names.
 
-Durante el desarrollo existe un README mínimo y un `PROGRESS.md` que se va
-actualizando. El README completo se escribe el Día 6 con perspectiva.
-No se mantiene documentación completa en paralelo al desarrollo.
+## 7. Incremental commits with conventional messages
+
+`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`. One commit per
+coherent task. Push daily at minimum. The repository history is part of
+the deliverable, not a by-product.
+
+## 8. The final README is written at the end
+
+During development we keep a minimal README and a live `PROGRESS.md`. The
+full README is written on Day 6 with hindsight. We do not maintain full
+documentation in parallel with development.

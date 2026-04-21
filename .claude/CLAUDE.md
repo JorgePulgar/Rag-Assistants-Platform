@@ -1,105 +1,122 @@
-# CLAUDE.md — Reglas para Claude Code en este repositorio
+# CLAUDE.md — Rules for Claude Code in this repository
 
-Este archivo se lee automáticamente por Claude Code al abrir el proyecto.
-Define cómo debes comportarte durante el desarrollo.
+This file is read automatically by Claude Code when the project opens. It
+defines how you must behave during development.
 
-## Documentos de contexto obligatorios
+## Mandatory context documents
 
-**Antes de empezar cualquier tarea**, lee estos archivos en este orden:
+**Before starting any task**, read these files in this order:
 
-1. `docs/CONSTITUTION.md` — principios no negociables.
-2. `docs/PROJECT_BRIEF.md` — qué construimos y criterios de aceptación.
-3. `docs/ARCHITECTURE.md` — stack, estructura de carpetas, modelo de datos.
-4. `docs/CODING_CONVENTIONS.md` — estilo y convenciones.
-5. `docs/TASKS.md` — tareas pendientes con dependencias.
+1. `docs/CONSTITUTION.md` — non-negotiable principles.
+2. `docs/PROJECT_BRIEF.md` — what we build and acceptance criteria.
+3. `docs/ARCHITECTURE.md` — stack, folder structure, data model.
+4. `docs/CODING_CONVENTIONS.md` — style and conventions.
+5. `docs/TASKS.md` — pending tasks with dependencies.
 
-Para tareas relacionadas con RAG (ingesta, chunking, prompt, retrieval,
-citas) lee adicionalmente:
+For RAG-related tasks (ingestion, chunking, prompt, retrieval, citations)
+additionally read:
 
-6. `docs/RAG_SPEC.md` — especificación técnica del pipeline RAG.
+6. `docs/RAG_SPEC.md` — technical specification of the RAG pipeline.
 
-## Skills específicas del proyecto
+## Project-specific skills
 
-En `.claude/skills/` hay dos skills locales:
+Two local skills live under `.claude/skills/`:
 
-- `rag-patterns/SKILL.md` — patrones concretos de implementación RAG.
-- `azure-integration/SKILL.md` — convenciones para clientes Azure.
+- `rag-patterns/SKILL.md` — concrete RAG implementation patterns.
+- `azure-integration/SKILL.md` — Azure client conventions.
 
-Cárgalas cuando la tarea lo requiera. No las cargues de forma preventiva.
+Load them when the task requires them. Do not load them preemptively.
 
-## Reglas de trabajo
+## Working rules
 
-### Flujo por tarea
-1. Identifica la siguiente tarea pendiente en `docs/TASKS.md` cuyas
-   dependencias estén cumplidas.
-2. Si hay ambigüedad sobre qué implementar, **pregunta antes de codear**.
-   Mejor una pregunta corta que una tarea mal ejecutada.
-3. Implementa la tarea completa (no a medias).
-4. Ejecuta los tests relevantes si existen.
-5. Marca la tarea como `[x]` en `docs/TASKS.md`.
-6. Actualiza `docs/PROGRESS.md` con una línea del día si ha terminado la
-   sesión (no en cada tarea).
-7. Haz commit con mensaje convencional (`feat:`, `fix:`, `refactor:`, etc.).
-8. Push al remoto.
+### Per-task flow
+1. Identify the next pending task in `docs/TASKS.md` whose dependencies
+   are satisfied. Tasks are organised by **phase**; complete phases in
+   order. Do not start Phase N+1 until Phase N's checkpoint passes
+   unless Jorge explicitly says otherwise.
+2. If there is ambiguity about what to implement, **ask before coding**.
+   A short question is better than a wrongly executed task.
+3. Implement the task completely (not halfway).
+4. Run the relevant tests if they exist.
+5. Mark the task as `[x]` in `docs/TASKS.md`.
+6. Append one line to `docs/PROGRESS.md` at the end of the session
+   indicating which phase advanced and any noteworthy decisions (not
+   on every task — once per session).
+7. Commit using a conventional message (`feat:`, `fix:`, `refactor:`, etc.).
+8. Push to the remote.
 
-### Qué NO hacer nunca
-- **No modifiques** `CONSTITUTION.md`, `PROJECT_BRIEF.md`, `RAG_SPEC.md`
-  sin aprobación explícita. Son documentos de decisiones tomadas.
-- **No añadas features** que no estén en `TASKS.md`.
-- **No añadas dependencias** sin justificar por qué no sirve lo existente.
-- **No escribas código** sin entender qué vas a escribir. Si el `RAG_SPEC`
-  no especifica algo, **pregunta**.
-- **No commitees secretos**. Verifica `.env` está en `.gitignore` antes
-  de cada commit.
-- **No tomes decisiones de arquitectura** sobre la marcha. La arquitectura
-  está decidida en `ARCHITECTURE.md`.
+### Never
+- **Do not modify** `CONSTITUTION.md`, `PROJECT_BRIEF.md`, or `RAG_SPEC.md`
+  without explicit approval. They record decisions already made.
+- **Do not add features** that are not in `TASKS.md`.
+- **Do not add dependencies** without justifying why existing ones do not
+  suffice.
+- **Do not write code** you do not understand. If `RAG_SPEC` does not
+  cover something, **ask**.
+- **Do not commit secrets**. Verify `.env` is in `.gitignore` before
+  every commit.
+- **Do not take architectural decisions** on the fly. Architecture is
+  fixed in `ARCHITECTURE.md`.
 
-### Qué sí hacer siempre
-- **Tipos completos** en Python (type hints) y TypeScript (strict).
-- **Comentarios en español** cuando expliquen decisiones de negocio.
-  Comentarios de código técnico pueden ir en inglés.
-- **Mensajes de commit** siguiendo la convención de `CODING_CONVENTIONS.md`.
-- **Un commit por cambio coherente**. No agrupes cambios no relacionados.
-- **Preguntar** ante cualquier duda material sobre el diseño o alcance.
+### Always
+- **Full typing** in Python (type hints) and TypeScript (strict).
+- **Commit messages** follow `CODING_CONVENTIONS.md`.
+- **One commit per coherent change**. Do not group unrelated edits.
+- **Ask** on any material doubt about design or scope.
 
-### Reglas específicas para el RAG core
+### RAG core rules
 
-Estos son los puntos críticos del proyecto. Trabaja con especial cuidado:
+These are the critical spots of the project. Work with extra care:
 
-1. **Aislamiento por asistente**: un índice Azure AI Search por asistente.
-   Nunca una colección única con filtros. Si algún atajo sugiere hacer
-   filtros compartidos, **rechaza el atajo**.
+1. **Per-assistant isolation**: one Azure AI Search index per assistant.
+   Never a shared index with filters. If any shortcut suggests shared
+   filtering, **reject the shortcut**.
 
-2. **Citas estructuradas**: siempre objetos JSON con `document_id`,
-   `document_name`, `page`, `chunk_text`. Nunca strings inline del tipo
-   `[Doc 1, pág. 3]`.
+2. **Structured citations**: always JSON objects with `document_id`,
+   `document_name`, `page`, `chunk_text`. Never inline strings like
+   `[Doc 1, p. 3]`.
 
-3. **Comportamiento de "no sé"**: si el retrieval devuelve 0 chunks por
-   encima del threshold, **no se llama al LLM**. Se devuelve un mensaje
-   hardcoded.
+3. **"I don't know" behaviour**: if retrieval returns zero chunks above
+   threshold, **do not call the LLM**. Return a hardcoded message.
 
-4. **Prompt construido según RAG_SPEC**: system prompt con reglas +
-   contexto recuperado + historial + pregunta actual. No inventes otro
-   formato.
+4. **Prompt built per RAG_SPEC**: system prompt with rules + retrieved
+   context + history + current question. Do not invent alternative
+   formats.
+
+5. **Conversational memory is mandatory**: every LLM call includes the
+   last `HISTORY_MAX_MESSAGES` messages from the conversation, loaded
+   from SQLite with their original roles preserved. Memory survives
+   backend restarts because messages live in a file on disk, not in
+   process memory. Any code that breaks this guarantee is a bug.
 
 ### Testing
 
-- El test `tests/test_isolation.py` es **crítico**. Cada vez que toques
-  ingesta o retrieval, ejecútalo.
-- Otros tests: ejecuta al menos los que toquen el módulo modificado.
-- No bajes la cobertura existente con un cambio.
+- `tests/test_isolation.py` is **critical**. Run it every time you touch
+  ingestion or retrieval.
+- Other tests: run at least the ones that cover the modified module.
+- Do not reduce existing coverage with a change.
 
-## Sobre la comunicación con Jorge
+## Language
 
-- Jorge es AI Engineer junior con experiencia en Python, Azure y RAG.
-- Habla español con Jorge. Los comentarios del código en español también.
-- Sé directo. No adules. Si algo está mal, dilo.
-- Si Jorge propone algo que viola la `CONSTITUTION.md`, señálalo
-  explícitamente en lugar de obedecer.
-- Cuando termines una tarea, resume en 2-3 líneas qué hiciste, no más.
+Every artefact in this repository is written in English:
 
-## Sobre el README
+- Code, comments, identifiers.
+- UI strings shown to the user.
+- Log messages and error messages.
+- Commit messages.
+- All documentation under `/docs` and skills.
+- The main `README.md`.
 
-- El README raíz durante el desarrollo es una versión mínima.
-- El README completo se escribe el Día 6 (tarea T055).
-- Hasta entonces, `docs/PROGRESS.md` es el registro vivo del proyecto.
+Exceptions (intentional Spanish content):
+- `README.es.md` is a courtesy version for Spanish speakers — it
+  summarises the main README and links back to it for technical depth.
+- Demo data (assistant names, sample documents, sample chat messages)
+  may be in Spanish to showcase multilingual support. That is user data,
+  not UI.
+
+## About the README
+
+- The root README during development is the minimal placeholder.
+- The full English README is written on Day 6 (task T055).
+- The Spanish courtesy README is written on Day 6 (task T056).
+- Until then, `docs/PROGRESS.md` is the living project record.

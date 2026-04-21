@@ -1,22 +1,30 @@
-# PROGRESS — Registro de desarrollo
+# PROGRESS — Development log
 
-Este archivo registra el progreso diario del proyecto. Cada entrada resume
-qué se hizo y qué quedó pendiente. Claude Code lo actualiza al final de
-cada sesión con una línea.
+This file records project progress across working sessions. Each entry
+summarises what was done and which phase advanced. Claude Code appends
+one line at the end of each session.
+
+Project phases are defined in `docs/TASKS.md`. At any moment, the
+"current phase" is the earliest one with pending tasks.
 
 ---
 
-## Día 0 — Lunes 21 abril — Planificación
+## Session 0 — Planning
 
-- Decisión de stack: FastAPI + React/Vite + Azure Foundry + Azure AI Search.
-- Creación de documentos de contexto (`CONSTITUTION`, `PROJECT_BRIEF`,
+- Stack decision: FastAPI + React/Vite + Azure Foundry + Azure AI Search.
+- Context documents created (`CONSTITUTION`, `PROJECT_BRIEF`,
   `ARCHITECTURE`, `RAG_SPEC`, `CODING_CONVENTIONS`, `TASKS`).
-- Creación de skills locales `rag-patterns` y `azure-integration`.
-- Creación del `CLAUDE.md` para Claude Code.
-- Repo inicializado con estructura base.
+- Local skills created (`rag-patterns`, `azure-integration`).
+- `CLAUDE.md` created for Claude Code.
+- Repository initialised with the base structure.
+- Decision: task file organised by **phases**, not calendar days, to
+  accommodate variable daily availability.
+- Decision: conversational memory is a core feature, documented
+  explicitly in `CONSTITUTION.md` (principle 4) and `RAG_SPEC.md`
+  (History section).
 
-**Siguiente**: T001-T013 del Día 1.
+**Next**: Phase 0 — Setup (T001–T007).
 
 ---
 
-<!-- Claude Code: añade entradas aquí al final de cada sesión -->
+<!-- Append one line per session below: "Session N — <date>: advanced Phase X, completed TXXX..TYYY, notes" -->

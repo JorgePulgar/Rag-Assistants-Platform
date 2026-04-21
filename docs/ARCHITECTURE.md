@@ -1,31 +1,33 @@
-# ARCHITECTURE — Stack, estructura y contratos
+# ARCHITECTURE — Stack, Structure, and Contracts
 
-## Stack tecnológico
+## Technology stack
 
 ### Backend
 - **Python 3.11+**
-- **FastAPI** — framework web async, validación con Pydantic, OpenAPI automático.
-- **SQLAlchemy 2.x** + **SQLite** — persistencia relacional (asistentes, documentos, conversaciones, mensajes).
-- **openai** (SDK) — cliente para Azure AI Foundry (compatible OpenAI).
-- **azure-search-documents** — cliente oficial de Azure AI Search.
-- **pypdf**, **python-docx**, **python-pptx** — parsers por formato.
-- **langchain-text-splitters** — solo para `RecursiveCharacterTextSplitter`
-  (no usamos el resto del framework).
+- **FastAPI** — async web framework, Pydantic validation, automatic OpenAPI.
+- **SQLAlchemy 2.x** + **SQLite** — relational persistence (assistants,
+  documents, conversations, messages).
+- **openai** (SDK) — client for Azure AI Foundry (OpenAI-compatible).
+- **azure-search-documents** — official Azure AI Search client.
+- **pypdf**, **python-docx**, **python-pptx** — format-specific parsers.
+- **langchain-text-splitters** — only for `RecursiveCharacterTextSplitter`.
+  We do not pull in the rest of the framework.
 
 ### Frontend
-- **React 18** + **Vite** — SPA con hot reload.
-- **Tailwind CSS** — estilado utility-first.
-- **shadcn/ui** — componentes base (dialog, input, button, card, toast).
-- **lucide-react** — iconos.
-- **axios** — cliente HTTP.
+- **React 18** + **Vite** — SPA with hot reload.
+- **TypeScript** — strict mode.
+- **Tailwind CSS** — utility-first styling.
+- **shadcn/ui** — base components (dialog, input, button, card, toast).
+- **lucide-react** — icons.
+- **axios** — HTTP client.
 
-### Servicios externos
-- **Azure AI Foundry** — despliegues:
-  - LLM: `gpt-4o-mini` (desarrollo) / `gpt-4o` (opcional para demo).
-  - Embeddings: `text-embedding-3-small` (1536 dim).
-- **Azure AI Search** — un índice por asistente.
+### External services
+- **Azure AI Foundry** deployments:
+  - LLM: `gpt-4o-mini` (development) / `gpt-4o` (optional for demo).
+  - Embeddings: `text-embedding-3-small` (1536 dims).
+- **Azure AI Search** — one index per assistant.
 
-## Estructura de carpetas
+## Folder structure
 
 ```
 rag-assistants/
@@ -48,8 +50,8 @@ rag-assistants/
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py                    # FastAPI entrypoint
-│   │   ├── config.py                  # settings desde .env
-│   │   ├── db.py                      # engine + session de SQLAlchemy
+│   │   ├── config.py                  # settings loaded from .env
+│   │   ├── db.py                      # SQLAlchemy engine + session
 │   │   ├── models/                    # SQLAlchemy models
 │   │   │   ├── assistant.py
 │   │   │   ├── document.py
@@ -63,20 +65,20 @@ rag-assistants/
 │   │   │   ├── assistants.py
 │   │   │   ├── documents.py
 │   │   │   └── chat.py
-│   │   ├── services/                  # lógica de negocio
+│   │   ├── services/                  # business logic
 │   │   │   ├── ingestion.py           # extract → chunk → embed → upload
-│   │   │   ├── retrieval.py           # query AI Search por asistente
-│   │   │   ├── rag.py                 # orquestación: retrieval + prompt + LLM
-│   │   │   └── parsers/               # un módulo por formato
+│   │   │   ├── retrieval.py           # Azure AI Search query per assistant
+│   │   │   ├── rag.py                 # orchestration: retrieval + prompt + LLM
+│   │   │   └── parsers/               # one module per format
 │   │   │       ├── pdf.py
 │   │   │       ├── docx.py
 │   │   │       ├── pptx.py
 │   │   │       └── text.py
-│   │   └── clients/                   # wrappers de clientes externos
+│   │   └── clients/                   # external SDK wrappers
 │   │       ├── azure_openai.py
 │   │       └── azure_search.py
 │   ├── tests/
-│   │   ├── test_isolation.py          # test crítico
+│   │   ├── test_isolation.py          # critical test
 │   │   ├── test_parsers.py
 │   │   └── test_rag_prompt.py
 │   ├── .env.example
@@ -86,10 +88,10 @@ rag-assistants/
 │   ├── src/
 │   │   ├── main.tsx
 │   │   ├── App.tsx
-│   │   ├── api/                       # funciones axios
+│   │   ├── api/                       # axios wrappers
 │   │   │   └── client.ts
 │   │   ├── components/
-│   │   │   ├── ui/                    # shadcn generado
+│   │   │   ├── ui/                    # shadcn-generated
 │   │   │   ├── AssistantList.tsx
 │   │   │   ├── AssistantForm.tsx
 │   │   │   ├── DocumentUploader.tsx
@@ -107,63 +109,64 @@ rag-assistants/
 │   ├── tailwind.config.js
 │   └── vite.config.ts
 ├── .gitignore
+├── .gitattributes
 └── README.md
 ```
 
-## Modelo de datos
+## Data model
 
 ### `assistants`
-| Columna         | Tipo          | Notas                                 |
-|-----------------|---------------|---------------------------------------|
-| `id`            | UUID (str)    | PK, generado en el servidor           |
-| `name`          | str(200)      | NOT NULL                              |
-| `instructions`  | TEXT          | NOT NULL, system prompt del asistente |
-| `description`   | TEXT          | NULL                                  |
-| `search_index`  | str(100)      | NOT NULL, UNIQUE — nombre del índice en Azure AI Search |
-| `created_at`    | datetime      |                                       |
-| `updated_at`    | datetime      |                                       |
+| Column          | Type          | Notes                                          |
+|-----------------|---------------|------------------------------------------------|
+| `id`            | UUID (str)    | PK, server-generated                           |
+| `name`          | str(200)      | NOT NULL                                       |
+| `instructions`  | TEXT          | NOT NULL, assistant's system prompt            |
+| `description`   | TEXT          | NULL                                           |
+| `search_index`  | str(100)      | NOT NULL, UNIQUE — Azure AI Search index name  |
+| `created_at`    | datetime      |                                                |
+| `updated_at`    | datetime      |                                                |
 
-Convención de `search_index`: `assistant-{id_hex_sin_guiones}`. Validado por
-regex `^[a-z0-9-]{2,128}$` (restricciones de Azure AI Search).
+`search_index` naming convention: `assistant-{id_hex_no_dashes}`. Validated
+against regex `^[a-z0-9-]{2,128}$` (Azure AI Search restrictions).
 
 ### `documents`
-| Columna         | Tipo          | Notas                                       |
+| Column          | Type          | Notes                                       |
 |-----------------|---------------|---------------------------------------------|
 | `id`            | UUID (str)    | PK                                          |
 | `assistant_id`  | UUID (FK)     | NOT NULL, ON DELETE CASCADE                 |
-| `filename`      | str(500)      | nombre original                             |
+| `filename`      | str(500)      | original filename                           |
 | `mime_type`     | str(100)      |                                             |
 | `size_bytes`    | int           |                                             |
-| `chunk_count`   | int           | cuántos chunks se generaron                 |
+| `chunk_count`   | int           | number of chunks generated                  |
 | `status`        | str(20)       | `pending` / `indexed` / `failed`            |
-| `error_message` | TEXT          | si `status=failed`                          |
+| `error_message` | TEXT          | set when `status=failed`                    |
 | `uploaded_at`   | datetime      |                                             |
 
 ### `conversations`
-| Columna         | Tipo          | Notas                                 |
+| Column          | Type          | Notes                                 |
 |-----------------|---------------|---------------------------------------|
 | `id`            | UUID (str)    | PK                                    |
 | `assistant_id`  | UUID (FK)     | NOT NULL, ON DELETE CASCADE           |
-| `title`         | str(200)      | autogenerado o editable               |
+| `title`         | str(200)      | autogenerated or editable             |
 | `created_at`    | datetime      |                                       |
-| `updated_at`    | datetime      | se actualiza en cada mensaje          |
+| `updated_at`    | datetime      | updated on every message              |
 
 ### `messages`
-| Columna           | Tipo          | Notas                                               |
+| Column            | Type          | Notes                                               |
 |-------------------|---------------|-----------------------------------------------------|
 | `id`              | UUID (str)    | PK                                                  |
 | `conversation_id` | UUID (FK)     | NOT NULL, ON DELETE CASCADE                         |
 | `role`            | str(20)       | `user` / `assistant`                                |
 | `content`         | TEXT          | NOT NULL                                            |
-| `citations`       | JSON          | array de objetos (solo si `role=assistant`)         |
+| `citations`       | JSON          | array of citation objects (only when `role=assistant`) |
 | `created_at`      | datetime      |                                                     |
 
-## Contratos de API
+## API contracts
 
-Todos los endpoints devuelven JSON. Errores usan convención HTTP estándar
-con body `{"detail": "mensaje"}`.
+All endpoints return JSON. Errors use standard HTTP conventions with a
+`{"detail": "message"}` body.
 
-### Asistentes
+### Assistants
 
 ```
 POST   /api/assistants
@@ -176,16 +179,15 @@ DELETE /api/assistants/{id}
 `POST /api/assistants` body:
 ```json
 {
-  "name": "Experto Legal",
-  "instructions": "Eres un abogado especializado...",
-  "description": "Responde consultas legales sobre contratos"
+  "name": "Legal Expert",
+  "instructions": "You are a lawyer specialised in...",
+  "description": "Answers legal questions about contracts"
 }
 ```
 
-Respuesta 201: el asistente creado incluyendo `id`, `search_index`,
-`created_at`.
+Response 201: created assistant including `id`, `search_index`, `created_at`.
 
-### Documentos
+### Documents
 
 ```
 POST   /api/assistants/{id}/documents      # multipart/form-data
@@ -193,19 +195,20 @@ GET    /api/assistants/{id}/documents
 DELETE /api/assistants/{id}/documents/{doc_id}
 ```
 
-`POST` acepta un archivo en el campo `file`. Respuesta 202 con el documento
-en estado `pending`. El cliente hace polling o el servidor procesa síncrono
-(decisión: **síncrono** para MVP — el Día 2 confirmamos tiempos; si un PDF
-grande pasa de 30s, se mueve a background task con FastAPI `BackgroundTasks`).
+`POST` accepts a file in the `file` field. Response 202 with the document
+in `pending` state. The client polls, or the server processes synchronously
+(decision: **synchronous** for the MVP — on Day 2 we verify timings; if a
+large PDF takes more than 30 seconds, we move to a background task using
+FastAPI `BackgroundTasks`).
 
 ### Chat
 
 ```
-POST   /api/conversations                                # crear conversación
-GET    /api/assistants/{id}/conversations                # listar conversaciones del asistente
-GET    /api/conversations/{id}/messages                  # cargar historial
-POST   /api/conversations/{id}/messages                  # enviar mensaje
-DELETE /api/conversations/{id}                           # borrar conversación
+POST   /api/conversations                                # create a conversation
+GET    /api/assistants/{id}/conversations                # list assistant's conversations
+GET    /api/conversations/{id}/messages                  # load history
+POST   /api/conversations/{id}/messages                  # send a message
+DELETE /api/conversations/{id}                           # delete a conversation
 ```
 
 `POST /api/conversations` body:
@@ -215,22 +218,22 @@ DELETE /api/conversations/{id}                           # borrar conversación
 
 `POST /api/conversations/{id}/messages` body:
 ```json
-{ "content": "¿Qué dice el contrato sobre la cláusula 3?" }
+{ "content": "What does the contract say about clause 3?" }
 ```
 
-Respuesta 200:
+Response 200:
 ```json
 {
   "message": {
     "id": "uuid",
     "role": "assistant",
-    "content": "Según el contrato, la cláusula 3...",
+    "content": "According to the contract, clause 3 states that...",
     "citations": [
       {
         "document_id": "uuid",
-        "document_name": "contrato_2024.pdf",
+        "document_name": "contract_2024.pdf",
         "page": 3,
-        "chunk_text": "La cláusula 3 establece que..."
+        "chunk_text": "Clause 3 establishes that..."
       }
     ],
     "created_at": "2026-04-21T10:00:00Z"
@@ -238,29 +241,30 @@ Respuesta 200:
 }
 ```
 
-## Flujo de una petición de chat
+## Chat request flow
 
-1. `POST /api/conversations/{id}/messages` con contenido del usuario.
-2. Backend carga: asistente (instrucciones, `search_index`), conversación
-   (historial de mensajes previos).
-3. Backend guarda el mensaje del usuario en BD.
-4. **Retrieval**: genera embedding del mensaje del usuario, consulta
-   Azure AI Search sobre `search_index` con top_k=5 y semantic reranking
-   activado. Filtra chunks con score < umbral.
-5. **Construcción del prompt** (ver `RAG_SPEC.md`):
-   - System: instrucciones del asistente + reglas de comportamiento RAG.
-   - Historial: últimos N mensajes de la conversación (ver RAG_SPEC).
-   - Context block: chunks recuperados con metadata.
-   - User: mensaje actual.
-6. **Generación**: llamada a Azure AI Foundry LLM.
-7. **Post-procesado**: mapea las citas (el LLM devuelve IDs de chunks, el
-   backend resuelve a objetos completos con document_name, página, snippet).
-8. Backend guarda el mensaje del asistente (con citations JSON) en BD.
-9. Responde al cliente.
+1. `POST /api/conversations/{id}/messages` with the user's content.
+2. Backend loads: assistant (instructions, `search_index`), conversation
+   (previous messages).
+3. Backend persists the user message.
+4. **Retrieval**: generate the embedding for the user message, query
+   Azure AI Search on `search_index` with top_k=5 and semantic reranking
+   enabled. Filter chunks below the threshold.
+5. **Prompt construction** (see `RAG_SPEC.md`):
+   - System: assistant instructions + RAG behaviour rules.
+   - History: last N messages from the conversation (see RAG_SPEC).
+   - Context block: retrieved chunks with metadata.
+   - User: current message.
+6. **Generation**: call Azure AI Foundry LLM.
+7. **Post-processing**: map citations (the LLM returns chunk IDs; the
+   backend resolves them to full objects with document_name, page,
+   snippet).
+8. Backend persists the assistant message (with citations JSON).
+9. Return to the client.
 
-## Variables de entorno
+## Environment variables
 
-Ver `backend/.env.example` para la lista completa. Mínimas:
+See `backend/.env.example` for the full list. Minimum:
 
 ```
 AZURE_OPENAI_ENDPOINT=
@@ -277,6 +281,6 @@ DATABASE_URL=sqlite:///./app.db
 CHUNK_SIZE=800
 CHUNK_OVERLAP=150
 RETRIEVAL_TOP_K=5
-RETRIEVAL_SCORE_THRESHOLD=0.5
+RETRIEVAL_SCORE_THRESHOLD=1.5
 HISTORY_MAX_MESSAGES=10
 ```

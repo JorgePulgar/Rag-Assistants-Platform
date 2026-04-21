@@ -1,102 +1,101 @@
-# RAG SPEC — Especificación del pipeline de Retrieval-Augmented Generation
+# RAG SPEC — Retrieval-Augmented Generation Pipeline Specification
 
-Este documento es el **núcleo técnico** del proyecto. Detalla cada decisión
-del pipeline RAG con su justificación. Jorge debe entender y defender cada
-parámetro — si en la presentación te preguntan "por qué chunk_size 800", la
-respuesta está aquí.
+This document is the **technical core** of the project. It describes every
+RAG pipeline decision with its rationale. Jorge should understand and
+defend every parameter — if, during the presentation, someone asks "why
+chunk_size 800", the answer lives here.
 
 ---
 
-## Parsing por formato
+## Parsing per format
 
-Se implementa un parser por tipo de archivo. Todos devuelven una lista de
-`ParsedChunk`:
+One parser per file type. All of them return a list of `ParsedChunk`:
 
 ```python
 class ParsedChunk:
-    text: str                    # contenido plano
-    page: Optional[int]          # número de página (1-indexed) si aplica
-    section: Optional[str]       # título de sección si aplica
+    text: str                    # plain content
+    page: Optional[int]          # 1-indexed page number if applicable
+    section: Optional[str]       # section title if applicable
 ```
 
-**PDF (`pypdf`)**: se extrae texto página a página. Se asocia `page` al
-número de página. Si una página tiene menos de 20 caracteres útiles se
-descarta (suelen ser portadas o páginas en blanco).
+**PDF (`pypdf`)**: text is extracted page by page. `page` is set to the
+page number. Pages with fewer than 20 useful characters are discarded
+(typically covers or blank pages).
 
-**DOCX (`python-docx`)**: se itera por párrafos. No hay concepto nativo de
-página, así que `page=None`. Si el documento tiene headings, se propaga el
-heading más reciente como `section`.
+**DOCX (`python-docx`)**: we iterate over paragraphs. There is no native
+page concept, so `page=None`. If the document has headings, the most
+recent heading is propagated as `section`.
 
-**PPTX (`python-pptx`)**: se itera por slides. `page` = número de slide
-(la gente habla de "diapositiva 3" igual que de "página 3"). Se extrae texto
-de shapes y notas del ponente si existen.
+**PPTX (`python-pptx`)**: we iterate over slides. `page` = slide number
+(people naturally talk about "slide 3" the same way they do about
+"page 3"). We extract text from shapes and speaker notes when present.
 
-**TXT / MD**: lectura directa, UTF-8 con fallback a latin-1. `page=None`.
+**TXT / MD**: direct read, UTF-8 with latin-1 fallback. `page=None`.
 
-**Errores**: si un parser falla, el documento queda en `status=failed` con
-el mensaje de error guardado. No se aborta la petición — el usuario ve en
-la UI que el documento falló y puede reintentarlo.
+**Errors**: if a parser fails, the document is left in `status=failed`
+with the error message stored. We do not abort the request — the user
+sees the failure in the UI and can retry.
 
 ## Chunking
 
-Se usa `RecursiveCharacterTextSplitter` de `langchain_text_splitters` con
-separadores en cascada: `["\n\n", "\n", ". ", " ", ""]`.
+We use `RecursiveCharacterTextSplitter` from `langchain_text_splitters`
+with cascading separators: `["\n\n", "\n", ". ", " ", ""]`.
 
-**Parámetros**:
-- `chunk_size = 800` caracteres.
-- `chunk_overlap = 150` caracteres.
+**Parameters**:
+- `chunk_size = 800` characters.
+- `chunk_overlap = 150` characters.
 
-**Justificación de `chunk_size=800`**:
-- Demasiado pequeño (< 400) pierde contexto local — un párrafo que
-  desarrolla una idea se corta y el retrieval devuelve chunks sin coherencia.
-- Demasiado grande (> 1500) mete ruido — un chunk de 2000 caracteres
-  contiene información relevante **y** irrelevante; el LLM recibe contexto
-  de baja señal y empeora la respuesta.
-- 800 caracteres ≈ 120-150 tokens ≈ 1-2 párrafos bien formados. Es el punto
-  dulce empírico para documentos en español de tipo legal/técnico.
+**Rationale for `chunk_size=800`**:
+- Too small (< 400) loses local context — a paragraph developing one idea
+  gets cut, and retrieval returns incoherent chunks.
+- Too large (> 1500) adds noise — a 2000-character chunk contains
+  relevant *and* irrelevant information; the LLM receives low-signal
+  context and the answer suffers.
+- 800 characters ≈ 120–150 tokens ≈ 1–2 well-formed paragraphs. It is the
+  empirical sweet spot for Spanish-language legal and technical documents.
 
-**Justificación de `chunk_overlap=150`** (aprox. 18% del chunk):
-- Sin overlap, una frase que cruza el límite se divide y ninguno de los dos
-  chunks la contiene completa.
-- 15-20% es el rango recomendado en la literatura y en las guías de Azure
-  AI Search. Menos del 10% deja cortes feos; más del 25% infla el índice
-  sin beneficio.
+**Rationale for `chunk_overlap=150`** (roughly 18% of the chunk):
+- Without overlap, a sentence crossing the boundary is split and neither
+  chunk contains it whole.
+- The 15–20% range is recommended both in the literature and in the Azure
+  AI Search guides. Below 10% leaves ugly cuts; above 25% inflates the
+  index without benefit.
 
-**Chunking por página (PDF/PPTX)**: cada chunk se asocia a **una sola**
-página. Si un párrafo cruza páginas, se trata como dos chunks separados.
-Esto es más conservador pero garantiza que la cita apunte a una página
-concreta — decir "está en la página 3 o 4" en una cita es peor que tener
-dos citas a páginas distintas.
+**Page-scoped chunking (PDF/PPTX)**: each chunk is tied to **exactly one**
+page. If a paragraph crosses from page 3 to page 4, we produce two
+separate chunks. This is more conservative, but it guarantees each citation
+points to a single page — saying "see page 3 or 4" in a citation is worse
+than showing two citations to distinct pages.
 
-**Metadata preservada por chunk**:
+**Per-chunk metadata**:
 ```python
 {
-  "chunk_id": "uuid",           # generado
+  "chunk_id": "uuid",           # generated
   "document_id": "uuid",
   "document_name": "str",
   "page": int | None,
   "section": str | None,
   "text": "str",
-  "chunk_index": int            # orden dentro del documento
+  "chunk_index": int            # position within the document
 }
 ```
 
 ## Embeddings
 
-- Modelo: `text-embedding-3-small` (Azure Foundry deployment).
-- Dimensiones: 1536.
-- Batch size al indexar: 16 chunks por llamada (límite de Foundry cómodo y
-  reduce latencia de ingesta).
+- Model: `text-embedding-3-small` (Azure Foundry deployment).
+- Dimensions: 1536.
+- Indexing batch size: 16 chunks per call (comfortable limit for Foundry
+  and reduces ingestion latency).
 
-**Por qué `-small` y no `-large`**:
-- `-large` (3072 dim) cuesta ~6× más y aporta ~2% en benchmarks de
-  retrieval. Para un MVP es inversión que no se justifica.
-- Si en el futuro hay que mejorar calidad, se cambia el deployment y se
-  reindexa. Es una variable de entorno, no una decisión de arquitectura.
+**Why `-small` and not `-large`**:
+- `-large` (3072 dims) costs about 6× more and yields roughly 2% on
+  retrieval benchmarks. For an MVP it is not worth it.
+- If quality ever needs to improve, we swap the deployment name and
+  reindex. It is an environment variable, not an architectural decision.
 
-## Azure AI Search: schema del índice
+## Azure AI Search: index schema
 
-Cada asistente tiene un índice con este schema:
+Every assistant has an index with this schema:
 
 ```python
 fields = [
@@ -116,150 +115,168 @@ fields = [
 ]
 ```
 
-**Vector search profile**: HNSW con parámetros por defecto (`m=4`,
-`ef_construction=400`). No merece la pena tunear para MVP.
+**Vector search profile**: HNSW with default parameters (`m=4`,
+`ef_construction=400`). Tuning for an MVP is not worth the effort.
 
-**Semantic ranker**: se activa en las queries. Requiere configuración de
-`semantic search` en el servicio — verificar tier del recurso (Basic o
-superior).
+**Semantic ranker**: enabled on queries. Requires `semantic search` to be
+configured on the service — verify the resource tier (Basic or higher).
 
-**Analyzer en español**: `es.microsoft` mejora stemming y tokenización
-para documentos en castellano.
+**Spanish analyzer**: `es.microsoft` improves stemming and tokenisation
+for Spanish-language documents. This is deliberate because we expect demo
+content in Spanish. For an English-only corpus we would switch to
+`en.microsoft`.
 
 ## Retrieval
 
-Dado un mensaje del usuario:
+Given a user message:
 
-1. Generar embedding del mensaje (`text-embedding-3-small`).
-2. Query híbrida a Azure AI Search:
-   - Keyword search sobre `text` (con analyzer español).
-   - Vector search sobre `vector` (k_nearest_neighbors=10).
+1. Generate the message embedding (`text-embedding-3-small`).
+2. Hybrid query against Azure AI Search:
+   - Keyword search over `text` (Spanish analyzer).
+   - Vector search over `vector` (k_nearest_neighbors=10).
    - Reciprocal Rank Fusion + semantic reranking.
-3. Tomar top 5 resultados.
-4. Filtrar los que tengan `@search.reranker_score < 1.5` (escala 0-4 de
-   Azure semantic reranker). Este umbral se ajusta empíricamente el Día 3
-   con documentos reales; 1.5 es el punto de partida conservador.
+3. Take the top 5 results.
+4. Drop any result with `@search.reranker_score < 1.5` (Azure semantic
+   reranker uses a 0–4 scale). This threshold is tuned empirically on
+   Day 3 against real documents; 1.5 is a conservative starting point.
 
-**Si tras filtrar quedan 0 chunks**: se activa el camino de "no sé" — no se
-llama al LLM (ahorro de coste) y se devuelve una respuesta hardcodeada
-informando al usuario.
+**If after filtering zero chunks remain**: the "I don't know" path fires —
+we do not call the LLM (saving cost) and return a hardcoded response
+informing the user.
 
-## Construcción del prompt
+## Prompt construction
 
-El prompt tiene tres partes claras:
+The prompt has three clear sections:
 
 ### System prompt
 
 ```
-{instrucciones_del_asistente}
+{assistant_instructions}
 
-REGLAS DE COMPORTAMIENTO:
-1. Responde SOLO con información presente en los documentos proporcionados
-   en el CONTEXTO. No uses conocimiento general.
-2. Si la información no está en el contexto, responde exactamente:
-   "No tengo información suficiente en mis documentos para responder a esta
-   pregunta. Lo que he buscado: [resumen breve]. Sugerencia: [próximo paso
-   razonable]."
-3. Cita las fuentes usando el formato [CITA:chunk_id] inline, donde chunk_id
-   es el identificador del chunk del que proviene la información.
-4. Sé conciso y directo. No repitas la pregunta del usuario.
-5. Si hay información contradictoria entre chunks, menciona ambas versiones
-   con sus citas.
+BEHAVIOUR RULES:
+1. Respond ONLY with information present in the documents provided in the
+   CONTEXT section. Do not use general knowledge.
+2. If the information is not in the context, respond exactly with:
+   "I don't have enough information in my documents to answer this
+   question. What I looked for: [brief summary]. Suggestion: [sensible
+   next step]."
+3. Cite sources using the inline format [CITE:chunk_id], where chunk_id is
+   the identifier of the chunk that supports the statement.
+4. Be concise and direct. Do not repeat the user's question.
+5. If chunks contain contradictory information, mention both versions with
+   their citations.
 ```
 
-### Contexto recuperado
+### Retrieved context
 
-Se inyecta como mensaje de rol `system` o `user` (decisión: **user**, porque
-funciona mejor empíricamente con modelos tipo GPT-4):
+Injected as a `user` message (decision: `user` rather than `system`,
+because empirically it works better with GPT-4-family models):
 
 ```
-CONTEXTO RECUPERADO:
+RETRIEVED CONTEXT:
 
-[CITA:chunk_id_1]
-Documento: contrato_2024.pdf | Página: 3
-Contenido: La cláusula 3 establece que...
+[CITE:chunk_id_1]
+Document: contract_2024.pdf | Page: 3
+Content: Clause 3 establishes that...
 
-[CITA:chunk_id_2]
-Documento: anexo_legal.pdf | Página: 7
-Contenido: En caso de incumplimiento...
+[CITE:chunk_id_2]
+Document: legal_annex.pdf | Page: 7
+Content: In case of breach...
 
-PREGUNTA DEL USUARIO: {mensaje_actual}
+USER QUESTION: {current_message}
 ```
 
-### Historial
+### History — conversational memory
 
-Se inyectan los últimos `HISTORY_MAX_MESSAGES=10` mensajes de la
-conversación (5 pares user/assistant) como mensajes previos en el array
-`messages` de la API de OpenAI. El contexto recuperado y la pregunta actual
-van como último `user` message.
+**This is a core feature, not decoration.** The assistant must behave as
+if it remembers the conversation. Concretely:
 
-**Por qué limitar a 10**: más historial no mejora la respuesta y consume
-tokens. Si en la demo se nota que el LLM pierde contexto de mensajes muy
-anteriores, se sube a 20.
+- On every user message, the backend loads the last
+  `HISTORY_MAX_MESSAGES=10` messages of the conversation from SQLite
+  (5 user/assistant pairs).
+- Those messages are injected as previous entries in the OpenAI
+  `messages` array, preserving their original roles. The retrieved
+  context and the current question form the last `user` message.
+- Because messages live in SQLite (a file on disk), memory survives
+  backend restarts, browser closures, and machine reboots. No in-memory
+  or session state is used.
+- Follow-up questions like "and what about the next section?" or
+  "elaborate on that" work naturally because the previous turns are in
+  the prompt.
 
-## Post-procesado de respuesta
+**Why cap at 10**: longer history does not meaningfully improve answers
+and consumes tokens. If during the demo the LLM loses context from much
+older messages within the same thread, raise `HISTORY_MAX_MESSAGES` to 20.
 
-El LLM devuelve texto con marcas `[CITA:chunk_id]` intercaladas. El backend:
+**Design note on retrieval + memory interaction**: retrieval runs only
+against the *current* user message, not against the whole history. This
+is deliberate. Retrieving on every historical turn would waste tokens
+and quota, and for follow-ups the LLM can usually resolve references
+from the prior turns already in context.
 
-1. Extrae todos los `chunk_id` mencionados.
-2. Para cada uno, busca en los resultados del retrieval el objeto completo
-   (document_id, document_name, page, snippet de 300 chars).
-3. Sustituye las marcas `[CITA:chunk_id]` por índices `[1]`, `[2]`, etc.
-4. Devuelve al cliente:
-   - `content`: texto con `[1]`, `[2]`, ... inline.
-   - `citations`: array ordenado de objetos correspondientes.
+## Response post-processing
 
-El frontend renderiza cada `[n]` como un pill clicable que expande el
-objeto de la cita correspondiente.
+The LLM returns text with inline `[CITE:chunk_id]` markers. The backend:
 
-## Comportamiento de "no sé"
+1. Extracts all mentioned `chunk_id`s.
+2. For each, looks up the full object (document_id, document_name, page,
+   snippet of 300 chars) from the retrieval result.
+3. Replaces `[CITE:chunk_id]` markers with sequential `[1]`, `[2]`, ...
+4. Returns to the client:
+   - `content`: text with inline `[1]`, `[2]`, ... markers.
+   - `citations`: ordered array of citation objects.
 
-Se activa en dos lugares:
+The frontend renders each `[n]` as a clickable pill that expands the
+corresponding citation object.
 
-1. **Retrieval vacío** (pre-LLM): no se llama al LLM. Se devuelve
-   hardcoded: "No he encontrado información relevante en los documentos de
-   este asistente para responder a tu pregunta."
+## "I don't know" behaviour
 
-2. **Retrieval con resultados pero LLM no puede responder** (post-LLM):
-   el LLM sigue la regla 2 del system prompt y devuelve el texto
-   pre-formateado.
+Triggered in two places:
 
-En ambos casos, `citations=[]`.
+1. **Empty retrieval** (pre-LLM): the LLM is never called. We return a
+   hardcoded message: "I did not find relevant information in this
+   assistant's documents to answer your question."
 
-## Tests críticos
+2. **Retrieval with results but the LLM decides it cannot answer**
+   (post-LLM): the LLM follows rule 2 of the system prompt and returns
+   the pre-formatted text.
+
+In both cases, `citations=[]`.
+
+## Critical tests
 
 ### `test_isolation.py`
 ```
-1. Crear asistente A con índice A.
-2. Crear asistente B con índice B.
-3. Subir documento "legal.pdf" a A.
-4. Subir documento "cocina.pdf" a B.
-5. Query "cláusula contractual" al asistente B.
-6. Assert: el retrieval del B devuelve 0 chunks de A.
-7. Query "cláusula contractual" al asistente A.
-8. Assert: el retrieval del A devuelve chunks de legal.pdf.
+1. Create assistant A with index A.
+2. Create assistant B with index B.
+3. Upload "legal.pdf" to A.
+4. Upload "cooking.pdf" to B.
+5. Query "contract clause" against assistant B.
+6. Assert: B's retrieval returns zero chunks from A.
+7. Query "contract clause" against assistant A.
+8. Assert: A's retrieval returns chunks from legal.pdf.
 ```
 
 ### `test_parsers.py`
-- Un archivo de fixture por formato en `tests/fixtures/`.
-- Verificar que el parser devuelve al menos 1 `ParsedChunk` con texto no
-  vacío.
-- Verificar que PDF asocia `page` correctamente.
+- One fixture file per format in `tests/fixtures/`.
+- Verify the parser returns at least one `ParsedChunk` with non-empty
+  text.
+- Verify the PDF parser sets `page` correctly.
 
 ### `test_rag_prompt.py`
-- Con contexto: verificar que el prompt incluye las 3 secciones.
-- Sin contexto: verificar que NO se llama al LLM y se devuelve el mensaje
-  hardcoded.
-- Con historial largo: verificar que se truncan a `HISTORY_MAX_MESSAGES`.
+- With context: verify the prompt includes all three sections.
+- Without context: verify the LLM is NOT called and the hardcoded message
+  is returned.
+- With long history: verify trimming to `HISTORY_MAX_MESSAGES`.
 
-## Parámetros que son hiperparámetros (no constantes)
+## Parameters that are hyperparameters (not constants)
 
-Todo lo siguiente vive en `.env` y puede tunearse sin tocar código:
+Everything below lives in `.env` and can be tuned without touching code:
 
-| Parámetro                   | Default | Rango razonable |
+| Parameter                   | Default | Sensible range  |
 |-----------------------------|---------|-----------------|
-| `CHUNK_SIZE`                | 800     | 500 - 1200      |
-| `CHUNK_OVERLAP`             | 150     | 80 - 250        |
-| `RETRIEVAL_TOP_K`           | 5       | 3 - 10          |
-| `RETRIEVAL_SCORE_THRESHOLD` | 1.5     | 1.0 - 2.5       |
-| `HISTORY_MAX_MESSAGES`      | 10      | 4 - 20          |
+| `CHUNK_SIZE`                | 800     | 500 – 1200      |
+| `CHUNK_OVERLAP`             | 150     | 80 – 250        |
+| `RETRIEVAL_TOP_K`           | 5       | 3 – 10          |
+| `RETRIEVAL_SCORE_THRESHOLD` | 1.5     | 1.0 – 2.5       |
+| `HISTORY_MAX_MESSAGES`      | 10      | 4 – 20          |

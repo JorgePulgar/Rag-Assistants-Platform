@@ -1,74 +1,74 @@
 ---
 name: rag-patterns
-description: Patrones de implementación del pipeline RAG para este proyecto. Úsala cuando trabajes en parsing de documentos, chunking, embeddings, retrieval, construcción del prompt o extracción de citas. No la uses para CRUD de asistentes o lógica de UI.
+description: Implementation patterns for the RAG pipeline of this project. Use it when working on document parsing, chunking, embeddings, retrieval, prompt construction, or citation extraction. Do not use it for assistant CRUD or UI work.
 ---
 
-# RAG Patterns — Patrones concretos para este proyecto
+# RAG Patterns — Concrete patterns for this project
 
-## Cuándo activar esta skill
+## When to activate
 
-Activa esta skill cuando la tarea toque cualquiera de:
-- Parsing de PDF, DOCX, PPTX o texto.
-- Chunking de documentos.
-- Llamadas a embeddings.
-- Subida/borrado de documentos en Azure AI Search.
-- Retrieval (búsqueda en Azure AI Search).
-- Construcción del prompt RAG.
-- Extracción y formateo de citas.
-- Cualquier test que involucre el pipeline anterior.
+Activate this skill when the task touches any of:
+- PDF, DOCX, PPTX, or text parsing.
+- Document chunking.
+- Embedding calls.
+- Upload/delete of documents on Azure AI Search.
+- Retrieval (search on Azure AI Search).
+- RAG prompt construction.
+- Citation extraction and formatting.
+- Any test involving the pipeline above.
 
-**No** la actives para: CRUD de asistentes/conversaciones sin tocar RAG,
-maquetación de UI, endpoints genéricos.
+**Do not** activate for: assistant/conversation CRUD without touching
+RAG, UI layout, generic endpoints.
 
-## Patrones obligatorios
+## Mandatory patterns
 
-### 1. Un índice Azure AI Search por asistente
+### 1. One Azure AI Search index per assistant
 
 ```python
-# Correcto
+# Correct
 index_name = f"assistant-{assistant.id.hex}"
 search_client.create_index(name=index_name, ...)
 
-# Incorrecto — NUNCA hacer esto
+# Wrong — NEVER do this
 search_client.query(index="global", filter=f"assistant_id eq '{id}'")
 ```
 
-El aislamiento es **estructural**. Si ves código con filtros por
-`assistant_id` sobre un índice compartido, es un bug.
+Isolation is **structural**. If you see code filtering by `assistant_id`
+over a shared index, that is a bug.
 
-### 2. Chunking con separadores en cascada
+### 2. Chunking with cascading separators
 
 ```python
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 splitter = RecursiveCharacterTextSplitter(
-    chunk_size=settings.CHUNK_SIZE,          # 800 por defecto
-    chunk_overlap=settings.CHUNK_OVERLAP,    # 150 por defecto
+    chunk_size=settings.CHUNK_SIZE,          # default 800
+    chunk_overlap=settings.CHUNK_OVERLAP,    # default 150
     separators=["\n\n", "\n", ". ", " ", ""],
     length_function=len,
 )
 ```
 
-Nunca hardcodear los valores. Siempre leer de `settings`.
+Never hardcode these values. Always read from `settings`.
 
-### 3. Un chunk = una página (PDF/PPTX)
+### 3. One chunk = one page (PDF/PPTX)
 
-Si un párrafo cruza de página 3 a página 4, produces 2 chunks: uno con
-`page=3` (la parte que está en esa página) y otro con `page=4`.
+If a paragraph crosses from page 3 to page 4, produce two chunks: one with
+`page=3` (the portion on that page) and another with `page=4`.
 
 ```python
-# En el parser de PDF
+# PDF parser
 for page_num, page in enumerate(reader.pages, start=1):
     text = page.extract_text()
     if len(text.strip()) < 20:
-        continue  # página vacía
-    # chunking solo dentro del texto de esta página
+        continue  # blank page
+    # chunking only within the text of this page
     chunks = splitter.split_text(text)
     for idx, chunk_text in enumerate(chunks):
         yield ParsedChunk(text=chunk_text, page=page_num, section=None)
 ```
 
-### 4. Embeddings en batches de 16
+### 4. Embeddings in batches of 16
 
 ```python
 def embed_chunks(chunks: list[str]) -> list[list[float]]:
@@ -83,7 +83,7 @@ def embed_chunks(chunks: list[str]) -> list[list[float]]:
     return embeddings
 ```
 
-### 5. Retrieval híbrido con semantic reranking
+### 5. Hybrid retrieval with semantic reranking
 
 ```python
 from azure.search.documents.models import (
@@ -109,7 +109,7 @@ filtered = [
 ]
 ```
 
-### 6. Camino "no sé" antes de llamar al LLM
+### 6. "I don't know" path before calling the LLM
 
 ```python
 def generate_response(assistant, conversation, user_message):
@@ -118,41 +118,40 @@ def generate_response(assistant, conversation, user_message):
     if not chunks:
         return {
             "content": (
-                "No he encontrado información relevante en los documentos "
-                "de este asistente para responder a tu pregunta. Sugerencia: "
-                "reformula la pregunta o sube documentos relacionados al "
-                "asistente."
+                "I did not find relevant information in this assistant's "
+                "documents to answer your question. Suggestion: rephrase "
+                "the question or upload related documents to this assistant."
             ),
             "citations": [],
         }
 
-    # ... resto del flujo con LLM
+    # ... rest of the flow with the LLM
 ```
 
-**Ahorra coste y evita alucinaciones**. No se llama al LLM si no hay
-contexto.
+**Saves cost and prevents hallucination**. The LLM is not called if there
+is no context.
 
-### 7. Formato de citas con `[CITA:chunk_id]`
+### 7. `[CITE:chunk_id]` citation format
 
 ```python
 system_prompt = f"""{assistant.instructions}
 
-REGLAS DE COMPORTAMIENTO:
-1. Responde SOLO con información del CONTEXTO.
-2. Si no hay información suficiente, responde: "No tengo información..."
-3. Cita las fuentes usando [CITA:chunk_id] inline.
+BEHAVIOUR RULES:
+1. Respond ONLY with information from the CONTEXT.
+2. If information is missing, answer: "I don't have enough information..."
+3. Cite sources using [CITE:chunk_id] inline.
 ..."""
 ```
 
-El post-procesado extrae los `chunk_id`, los mapea a objetos completos,
-y el frontend renderiza como `[1]`, `[2]`, ... clicables.
+Post-processing extracts the `chunk_id`s, maps them to full objects, and
+the frontend renders them as clickable `[1]`, `[2]`, ... pills.
 
 ```python
 import re
 
 def post_process(llm_response: str, retrieved_chunks: list[dict]) -> dict:
     chunk_by_id = {c["chunk_id"]: c for c in retrieved_chunks}
-    pattern = re.compile(r"\[CITA:([a-f0-9-]+)\]")
+    pattern = re.compile(r"\[CITE:([a-f0-9-]+)\]")
 
     cited_ids_in_order = []
     seen = set()
@@ -162,11 +161,11 @@ def post_process(llm_response: str, retrieved_chunks: list[dict]) -> dict:
             cited_ids_in_order.append(cid)
             seen.add(cid)
 
-    # Sustituir [CITA:id] por [N]
+    # Replace [CITE:id] with [N]
     content = llm_response
     citations = []
     for i, cid in enumerate(cited_ids_in_order, start=1):
-        content = content.replace(f"[CITA:{cid}]", f"[{i}]")
+        content = content.replace(f"[CITE:{cid}]", f"[{i}]")
         chunk = chunk_by_id[cid]
         citations.append({
             "document_id": chunk["document_id"],
@@ -178,10 +177,16 @@ def post_process(llm_response: str, retrieved_chunks: list[dict]) -> dict:
     return {"content": content, "citations": citations}
 ```
 
-### 8. Historial acotado
+### 8. Bounded, persistent history (conversational memory)
+
+Conversational memory is a **core feature** of the project. The assistant
+must feel like it remembers prior turns in the same conversation.
+
+Load messages from SQLite and preserve their roles — never drop roles,
+never merge turns into the same message.
 
 ```python
-# Cargar últimos N mensajes (no todos)
+# Load last N messages, not all — then reverse to chronological order
 history = (
     db.query(Message)
     .filter(Message.conversation_id == conversation.id)
@@ -189,24 +194,39 @@ history = (
     .limit(settings.HISTORY_MAX_MESSAGES)
     .all()
 )
-history.reverse()  # orden cronológico para el LLM
+history.reverse()
+
+# Build the messages array with roles preserved
+messages = [{"role": "system", "content": system_prompt}]
+for msg in history:
+    messages.append({"role": msg.role, "content": msg.content})
+# The retrieved context + current question go as the last user message
+messages.append({"role": "user", "content": context_block + "\n\n" + user_message})
 ```
 
-## Anti-patrones (rechaza si los ves)
+**Why this works across sessions**: SQLite is a file on disk, so the
+history survives backend restarts, browser closes, and machine reboots.
+No in-memory or session state is used anywhere. A user who returns a
+week later should get their conversation back exactly as they left it.
 
-- **Filtros por `assistant_id` sobre índice compartido**: rompe aislamiento.
-- **`[Doc 1, pág. 3]` como string en el texto**: cita no estructurada.
-- **Llamar al LLM siempre, incluso con retrieval vacío**: desperdicia
-  dinero y arriesga alucinación.
-- **Chunking con `chunk_size` hardcoded**: imposible tunear.
-- **Cargar todo el historial de la conversación**: infla tokens sin
-  beneficio.
-- **Parser que ignora errores silenciosamente**: documento queda en
-  estado inconsistente.
+**Do not** retrieve on every historical turn — retrieval runs only
+against the *current* user message. The LLM resolves references ("and
+the next one?") from the history already present in the prompt.
 
-## Referencias en el repo
+## Anti-patterns (reject on sight)
 
-- Spec completa: `docs/RAG_SPEC.md`.
-- Tests obligatorios: `backend/tests/test_isolation.py`, `test_parsers.py`,
+- **Filtering by `assistant_id` on a shared index**: breaks isolation.
+- **`[Doc 1, p. 3]` as inline string**: unstructured citation.
+- **Always calling the LLM, even with empty retrieval**: wastes money and
+  risks hallucination.
+- **Chunking with hardcoded `chunk_size`**: impossible to tune.
+- **Loading the full conversation history**: inflates tokens with no gain.
+- **Parser silently swallowing errors**: document ends up in an
+  inconsistent state.
+
+## Repository references
+
+- Full spec: `docs/RAG_SPEC.md`.
+- Mandatory tests: `backend/tests/test_isolation.py`, `test_parsers.py`,
   `test_rag_prompt.py`.
-- Constantes: `backend/app/config.py` lee de `.env`.
+- Constants: `backend/app/config.py` reads from `.env`.

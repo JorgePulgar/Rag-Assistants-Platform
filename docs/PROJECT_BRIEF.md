@@ -1,104 +1,120 @@
-# PROJECT BRIEF — Plataforma de Asistentes RAG
+# PROJECT BRIEF — RAG Assistants Platform
 
-## Qué construimos
+## What we are building
 
-Una aplicación full-stack que permite crear múltiples asistentes
-conversacionales, cada uno con sus propias instrucciones y su propia base
-documental aislada. El usuario chatea con un asistente y recibe respuestas
-fundamentadas **exclusivamente** en los documentos de ese asistente, con
-citas estructuradas.
+A full-stack application that lets users create multiple conversational
+assistants, each with its own system instructions and its own isolated
+document base. The user chats with an assistant and receives answers that
+are grounded **exclusively** in that assistant's documents, with structured
+citations.
 
-## Por qué (problema que resuelve)
+## Why (the problem)
 
-Los equipos que adoptan IA generativa internamente necesitan asistentes
-especializados (legal, técnico, onboarding, soporte, etc.) sin mezclar
-conocimientos entre dominios. Los chatbots genéricos alucinan; los asistentes
-RAG bien aislados responden con trazabilidad.
+Teams adopting generative AI internally need specialised assistants (legal,
+technical, onboarding, support, etc.) without mixing knowledge between
+domains. Generic chatbots hallucinate; well-isolated RAG assistants answer
+with traceability.
 
-## Entregable académico
+## Academic deliverable
 
-Este proyecto es una práctica universitaria con entrega en 7 días.
-Los entregables exigidos por el enunciado son:
+This project is a university assignment with a 7-day delivery window.
+The required deliverables are:
 
-1. Repositorio público de GitHub con código completo y ejecutable.
-2. README técnico con arquitectura, decisiones y guía de ejecución.
-3. Vídeo demo de 3–5 minutos.
+1. Public GitHub repository with complete, runnable code.
+2. Technical README with architecture, design decisions, and setup guide.
+3. Demo video, 3–5 minutes long.
 
-## Funcionalidades core (obligatorias)
+## Core functionality (mandatory)
 
-### CRUD de asistentes
-- Crear, listar, editar, eliminar.
-- Campos mínimos: `nombre`, `instrucciones` (system prompt), `descripción`
-  (opcional).
+### Assistant CRUD
+- Create, list, update, delete.
+- Minimum fields: `name`, `instructions` (system prompt), `description`
+  (optional).
 
-### Documentos por asistente
-- Subir, listar, eliminar documentos asociados a un asistente concreto.
-- Formatos obligatorios: PDF, DOCX, PPTX, TXT, MD.
-- OCR no requerido (se documenta como limitación).
+### Documents per assistant
+- Upload, list, delete documents attached to a specific assistant.
+- Required formats: PDF, DOCX, PPTX, TXT, MD.
+- OCR is not required (documented as a known limitation).
 
-### Ingesta y vectorización
-- Extracción de texto del documento.
-- Chunking con parámetros justificados.
-- Generación de embeddings.
-- Almacenamiento en un índice de Azure AI Search **por asistente**.
+### Ingestion and vectorisation
+- Text extraction from the document.
+- Chunking with justified parameters.
+- Embedding generation.
+- Storage in a per-assistant Azure AI Search index.
 
-### Chat con RAG aislado
-- Seleccionar asistente, enviar mensaje, recibir respuesta.
-- Flujo: recuperación del índice del asistente → construcción de prompt con
-  instrucciones + historial + contexto → generación con LLM → respuesta con
-  citas estructuradas.
-- Comportamiento explícito de "no sé" cuando no hay evidencia suficiente.
+### Isolated RAG chat
+- Select assistant, send message, receive response.
+- Flow: retrieve from the assistant's index → build prompt with instructions
+  + history + context → generate with the LLM → return response with
+  structured citations.
+- Explicit "I don't know" behaviour when evidence is insufficient.
 
-### Persistencia del chat
-- Guardar historial de conversación en SQLite.
-- Reanudar conversación previa.
-- Iniciar conversación nueva.
+### Chat persistence and conversational memory
+- Conversation history is stored in SQLite.
+- The assistant remembers what was said **within the same conversation**:
+  every LLM call includes the last N messages as prior context, so
+  follow-up questions work naturally ("and what about the next clause?"
+  refers back to the previously discussed one).
+- Previous conversations can be resumed after closing the browser, the
+  backend, or the whole machine. The full thread is reloaded from SQLite.
+- Users can start a new conversation at any time; each conversation is a
+  separate thread with its own memory.
+- **Not included**: cross-conversation memory (assistant remembering facts
+  about the user across different conversations). This is an explicit
+  non-goal for the MVP.
 
-### Aplicación full-stack
-- Frontend React con interfaz para los tres módulos (asistentes, documentos,
+### Full-stack application
+- React frontend with UI for the three modules (assistants, documents,
   chat).
-- Backend FastAPI con API REST.
+- FastAPI backend with a REST API.
 
-## Fuera de alcance (explícitamente)
+### UI language
 
-No forma parte del MVP y **no se implementa** salvo que sobre tiempo en el
-Día 7 (buffer):
+The UI is in English. Assistant names, instructions, document content, and
+chat messages stay in whatever language the user writes them in — that is
+data, not UI. The demo video is recorded in Spanish (narration) but the
+interface displayed on screen is English throughout.
 
-- Autenticación de usuarios / multi-tenancy.
-- Streaming de respuestas (SSE).
-- OCR de imágenes escaneadas.
-- Despliegue en producción.
-- Compartir asistentes entre usuarios.
-- Versionado de documentos.
-- Búsqueda dentro del historial de chats.
+## Out of scope (explicitly)
 
-Cualquier propuesta de añadir algo fuera de alcance durante el desarrollo
-se rechaza por defecto. El buffer del Día 7 es para **bugs**, no para scope
-creep.
+The following are not part of the MVP and are **not implemented** unless
+Day 7 (buffer) has spare time:
 
-## Criterios de aceptación
+- User authentication / multi-tenancy.
+- Response streaming (SSE).
+- OCR of scanned images.
+- Production deployment.
+- Sharing assistants between users.
+- Document versioning.
+- Chat history search.
 
-El proyecto se considera completo cuando, en la demo grabada, se puede:
+Any proposal to add something out of scope during development is rejected
+by default. The Day 7 buffer is for **bugs**, not scope creep.
 
-1. Crear dos asistentes con instrucciones distintas (ej: "Experto Legal" y
-   "Asistente de Cocina").
-2. Subir al menos 2 documentos a cada asistente, distintos entre sí.
-3. Chatear con el primer asistente y recibir respuestas con citas
-   correctas a sus documentos.
-4. Cambiar al segundo asistente, hacer la misma pregunta temática del
-   primero, y verificar que responde "no tengo información" (aislamiento).
-5. Cerrar el navegador, volver a abrir, seleccionar la conversación del
-   primer asistente y continuar donde se dejó.
-6. Ver las citas como bloques expandibles con nombre de documento, página
-   (si aplica) y fragmento relevante.
+## Acceptance criteria
 
-## Audiencia del proyecto
+The project is considered complete when, in the recorded demo, the
+following can be shown:
 
-**Primaria**: evaluador del curso. Busca que se cumpla el core del enunciado
-con calidad técnica y documentación clara.
+1. Create two assistants with distinct instructions (e.g. "Legal Expert"
+   and "Cooking Assistant").
+2. Upload at least two distinct documents to each assistant.
+3. Chat with the first assistant and receive answers with accurate
+   citations to its documents.
+4. Switch to the second assistant, ask the same topical question from
+   the first, and verify it answers "I don't have information" (isolation).
+5. Close the browser, reopen, select the first assistant's conversation,
+   and continue where it left off.
+6. See citations rendered as expandable blocks with document name, page
+   (when applicable), and the relevant snippet.
 
-**Secundaria**: reclutadores de posiciones de AI Engineer que revisen el
-repo en el futuro. Buscan señales de criterio técnico (decisiones
-justificadas, testing mínimo, arquitectura limpia, commits coherentes).
+## Audience
 
-No se optimiza para ninguna audiencia comercial en esta iteración.
+**Primary**: the course evaluator. They want the brief satisfied with
+technical quality and clear documentation.
+
+**Secondary**: AI Engineer recruiters browsing the repo afterwards. They
+want signals of technical judgement (justified decisions, minimal testing,
+clean architecture, coherent commit history).
+
+We do not optimise for any commercial audience in this iteration.
