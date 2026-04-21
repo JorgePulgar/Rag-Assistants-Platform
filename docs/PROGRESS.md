@@ -28,3 +28,5 @@ Project phases are defined in `docs/TASKS.md`. At any moment, the
 ---
 
 <!-- Append one line per session below: "Session N — <date>: advanced Phase X, completed TXXX..TYYY, notes" -->
+
+Session 1 — 2026-04-21: advanced Phase 0, completed T004–T007; notable: pydantic-core 2.46.3 required for Python 3.14 wheel support (pinned); Tailwind v3 chosen over v4 for shadcn/ui compatibility.
