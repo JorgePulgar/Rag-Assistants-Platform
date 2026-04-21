@@ -24,18 +24,18 @@ between tasks stay valid regardless of when each task is done.
 - [x] **T001** — Create the GitHub repo from the browser (manual, Jorge).
 - [x] **T002** — Clone the repo locally, drop these documents into
   `/docs`, make the initial commit. ⬅ T001
-- [ ] **T003** — Azure setup: create Azure AI Foundry resource, deploy
+- [x] **T003** — Azure setup: create Azure AI Foundry resource, deploy
   `gpt-4o-mini` and `text-embedding-3-small`. Create Azure AI Search
   resource (Basic tier or higher, semantic search enabled). Store
   credentials in a local `.env` (manual, Jorge — not Claude Code). ⬅ T001
-- [ ] **T004** — Backend scaffolding: folder structure, `requirements.txt`,
+- [x] **T004** — Backend scaffolding: folder structure, `requirements.txt`,
   FastAPI running on `:8000` with a `/health` endpoint, SQLAlchemy
   configured, SQLite auto-created on startup. ⬅ T002
-- [ ] **T005** — Frontend scaffolding: Vite + React + TS + Tailwind +
+- [x] **T005** — Frontend scaffolding: Vite + React + TS + Tailwind +
   shadcn init. `npm run dev` serves on `:5173` with a blank page. ⬅ T002
-- [ ] **T006** — Complete `.gitignore` (venv, node_modules, .env, .db,
+- [x] **T006** — Complete `.gitignore` (venv, node_modules, .env, .db,
   __pycache__, .vscode, .idea, dist, build). ⬅ T002
-- [ ] **T007** — `.env.example` in backend with every variable documented.
+- [x] **T007** — `.env.example` in backend with every variable documented.
   ⬅ T004
 
 **Phase 0 checkpoint**: backend serves `/health` returning 200, frontend
