@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -8,7 +10,7 @@ import app.models  # noqa: F401 — register all models with Base
 from app.db import Base, get_db
 from app.main import app
 
-_TEST_DATABASE_URL = "sqlite://"  # in-memory; StaticPool keeps a single connection
+_TEST_DATABASE_URL = "sqlite://"
 
 _test_engine = create_engine(
     _TEST_DATABASE_URL,
@@ -43,3 +45,24 @@ def client() -> TestClient:
         yield c  # type: ignore[misc]
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=_test_engine)
+
+
+@pytest.fixture(autouse=True)
+def _stub_azure(request: pytest.FixtureRequest) -> MagicMock:
+    """Stub all Azure SDK calls in unit tests.
+
+    Tests marked @pytest.mark.integration bypass this stub and hit real Azure.
+    """
+    if request.node.get_closest_marker("integration"):
+        yield  # type: ignore[misc]
+        return
+
+    with (
+        patch("app.clients.azure_search.get_index_client") as mock_ic,
+        patch("app.clients.azure_search.get_search_client") as mock_sc,
+        patch("app.clients.azure_openai.get_openai_client") as mock_oc,
+    ):
+        mock_ic.return_value = MagicMock()
+        mock_sc.return_value = MagicMock()
+        mock_oc.return_value = MagicMock()
+        yield mock_ic  # type: ignore[misc]

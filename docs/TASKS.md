@@ -72,15 +72,15 @@ shows a blank page at `localhost:5173`, Azure resources are created,
 being indexed in that assistant's isolated Azure AI Search index, and
 retrievable.
 
-- [ ] **T014** — Client `clients/azure_openai.py`: embeddings + LLM
+- [x] **T014** — Client `clients/azure_openai.py`: embeddings + LLM
   wrapper, reads config from `.env`. ⬅ T007
-- [ ] **T015** — Client `clients/azure_search.py`: wrapper for index
+- [x] **T015** — Client `clients/azure_search.py`: wrapper for index
   creation, document upload, search. ⬅ T007
-- [ ] **T016** — Parsers: `pdf.py`, `docx.py`, `pptx.py`, `text.py`.
+- [x] **T016** — Parsers: `pdf.py`, `docx.py`, `pptx.py`, `text.py`.
   Each returns `list[ParsedChunk]` per RAG_SPEC. ⬅ T004
-- [ ] **T017** — Parser tests with one fixture per format in
+- [x] **T017** — Parser tests with one fixture per format in
   `tests/fixtures/`. ⬅ T016
-- [ ] **T018** — `services/ingestion.py` `index_document` function:
+- [x] **T018** — `services/ingestion.py` `index_document` function:
   - resolve parser by extension
   - extract chunks
   - apply `RecursiveCharacterTextSplitter` with settings values
@@ -89,19 +89,19 @@ retrievable.
   - upload chunks with full metadata
   - update document status in SQLite
   ⬅ T014, T015, T016
-- [ ] **T019** — Pydantic schemas for `Document`. ⬅ T008
-- [ ] **T020** — Router `api/documents.py`: upload, list, delete.
+- [x] **T019** — Pydantic schemas for `Document`. ⬅ T008
+- [x] **T020** — Router `api/documents.py`: upload, list, delete.
   Upload via `UploadFile`, write temp file, call ingestion, remove temp.
   ⬅ T018
-- [ ] **T021** — Delete endpoint: remove chunks from the Azure Search
+- [x] **T021** — Delete endpoint: remove chunks from the Azure Search
   index (filter by `document_id`) and the SQLite row. Deleting an
   assistant cascades to its documents and deletes the whole index. ⬅ T020
-- [ ] **T022** — Manual check: upload a real PDF to an assistant, verify
+- [x] **T022** — Manual check: upload a real PDF to an assistant, verify
   in the Azure Portal that the index exists and contains chunks.
-- [ ] **T023** — Automatic isolation test (`test_isolation.py`,
+- [x] **T023** — Automatic isolation test (`test_isolation.py`,
   ingestion portion): two assistants, two different documents, verify
   no cross-contamination at the index level. ⬅ T018
-- [ ] **T024** — Commit and push.
+- [x] **T024** — Commit and push.
 
 **Phase 2 checkpoint**: uploading a PDF to an assistant correctly indexes
 it in its own index, the isolation test passes, the document shows up in

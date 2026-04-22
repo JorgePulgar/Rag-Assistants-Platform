@@ -17,7 +17,16 @@
       "Bash(pkill -f \"vite\")",
       "Bash(git check-ignore *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(.venv/Scripts/pytest *)",
+      "Bash(curl -s http://127.0.0.1:8000/api/assistants)",
+      "Bash(tasklist)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 50940)",
+      "Bash(taskkill //F //PID 30424)",
+      "Bash(.venv/Scripts/python tests/fixtures/create_fixtures.py)",
+      "Bash(git commit *)"
     ]
   }
 }

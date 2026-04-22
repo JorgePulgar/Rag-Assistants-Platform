@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from app.clients import azure_search
 from app.exceptions import AssistantNotFoundError
 from app.models.assistant import Assistant
 from app.schemas.assistant import AssistantCreate, AssistantRead, AssistantUpdate
@@ -67,5 +68,8 @@ def delete_assistant(db: Session, assistant_id: str) -> None:
     assistant = db.get(Assistant, assistant_id)
     if assistant is None:
         raise AssistantNotFoundError(assistant_id)
+    # Delete the Azure AI Search index (all chunks for this assistant).
+    # Errors are swallowed so that the SQLite row is always cleaned up.
+    azure_search.delete_index(assistant.search_index)
     db.delete(assistant)
     db.commit()
