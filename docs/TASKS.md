@@ -114,7 +114,7 @@ the list endpoint with `status=indexed`.
 **Goal**: a one-page visual diagram of the system that will live in the
 repo and be referenced from the README.
 
-- [ ] **T025** — Draft the conceptual architecture diagram (Excalidraw
+- [x] **T025** — Draft the conceptual architecture diagram (Excalidraw
   preferred, Mermaid as fallback). Save source and PNG export to
   `docs/architecture.png` + `docs/architecture.excalidraw` (or `.mmd`).
   Must include:

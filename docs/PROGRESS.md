@@ -32,3 +32,4 @@ Project phases are defined in `docs/TASKS.md`. At any moment, the
 Session 1 — 2026-04-21: advanced Phase 0, completed T004–T007; notable: pydantic-core 2.46.3 required for Python 3.14 wheel support (pinned); Tailwind v3 chosen over v4 for shadcn/ui compatibility.
 Session 2 — 2026-04-22: completed Phase 1 (T008–T013); notable: sqlalchemy bumped to 2.0.49 (2.0.36 broke on Python 3.14 Union typing); 11 CRUD tests green.
 Session 3 — 2026-04-21: completed Phase 2 (T014–T024); notable: chunk_index field added to Azure AI Search schema to fix 400 error on upload; integration tests hit real Azure and both pass; 27 unit tests green.
+Session 4 — 2026-04-22: completed Phase 3 (T025); Mermaid flowchart diagram created as docs/architecture.mmd; Excalidraw skipped per Jorge's instruction; all 8 chat-flow steps labelled; per-assistant index convention annotated on AI Search node.
