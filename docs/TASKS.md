@@ -48,17 +48,17 @@ shows a blank page at `localhost:5173`, Azure resources are created,
 
 **Goal**: create, list, edit, delete assistants through the API.
 
-- [ ] **T008** — SQLAlchemy models: `Assistant`, `Document`,
+- [x] **T008** — SQLAlchemy models: `Assistant`, `Document`,
   `Conversation`, `Message`. Auto-migrate on startup. ⬅ T004
-- [ ] **T009** — Pydantic schemas for `Assistant` (Create, Update, Read).
+- [x] **T009** — Pydantic schemas for `Assistant` (Create, Update, Read).
   ⬅ T008
-- [ ] **T010** — Router `api/assistants.py` with the five CRUD endpoints.
+- [x] **T010** — Router `api/assistants.py` with the five CRUD endpoints.
   Logic in `services/assistant_service.py`. ⬅ T009
-- [ ] **T011** — Generate `search_index` name on assistant creation
+- [x] **T011** — Generate `search_index` name on assistant creation
   (string only; actual Azure index created in Phase 2). ⬅ T010
-- [ ] **T012** — Basic tests: create, list, update, delete an assistant.
+- [x] **T012** — Basic tests: create, list, update, delete an assistant.
   Using FastAPI's `TestClient`. ⬅ T010
-- [ ] **T013** — Commit and push.
+- [x] **T013** — Commit and push.
 
 **Phase 1 checkpoint**: `curl localhost:8000/api/assistants` returns `[]`,
 `POST` with a valid body creates an assistant, `GET` lists it,
