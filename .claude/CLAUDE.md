@@ -18,6 +18,13 @@ additionally read:
 
 6. `docs/RAG_SPEC.md` — technical specification of the RAG pipeline.
 
+For frontend tasks (Phase 5 and any UI polish) additionally read:
+ 
+7. `docs/FRONTEND_SPEC.md` — visual and interaction design specification.
+   Treat it the way you treat `RAG_SPEC.md`: it is authoritative. If a
+   visual decision is not covered there, **ask** before implementing.
+
+
 ## Project-specific skills
 
 Two local skills live under `.claude/skills/`:

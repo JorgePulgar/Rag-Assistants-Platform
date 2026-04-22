@@ -195,12 +195,22 @@ conversation demonstrates memory; backend restart preserves history.
 ## Phase 5 — Frontend
 
 **Goal**: functional UI with the three views wired to the backend.
-
+ 
+> **Before starting Phase 5**, read `docs/FRONTEND_SPEC.md`. It is the
+> authoritative source for layout, colour palette, typography, component
+> styling, and microcopy. Every task in this phase must comply with it.
+> If something is not specified there, ask Jorge before improvising.
+ 
 - [ ] **T035** — *(Optional, 45–60 min)* Quick wireframe pass for the
   three views (assistant list, assistant detail, chat) in Excalidraw or
   on paper. Decide layout only: sidebar position, citation block
-  placement, document uploader placement. If skipped, rely on the
-  `frontend-design` skill defaults.
+  placement, document uploader placement. If skipped, rely on
+  `FRONTEND_SPEC.md` defaults.
+- [ ] **T035b** — Theme setup per `FRONTEND_SPEC.md`: Tailwind config
+  with `darkMode: 'class'`, `ThemeProvider` at root with system
+  preference default and `localStorage` override, theme toggle button
+  in the header (Sun/Moon icons from lucide). Load Inter from Google
+  Fonts. ⬅ T005
 - [ ] **T036** — API client in `frontend/src/api/client.ts` with axios.
   TS types mirroring the Pydantic schemas. ⬅ T005
 - [ ] **T037** — Main layout: sidebar with assistant list + main area. ⬅ T036
