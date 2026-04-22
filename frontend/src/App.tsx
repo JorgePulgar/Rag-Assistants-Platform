@@ -1,121 +1,106 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect, useCallback } from 'react';
+import { Layout } from '@/components/Layout';
+import { AssistantList } from '@/components/AssistantList';
+import { AssistantsPage } from '@/pages/AssistantsPage';
+import { AssistantDetailPage } from '@/pages/AssistantDetailPage';
+import { ChatPage } from '@/pages/ChatPage';
+import { assistantsApi } from '@/api/client';
+import type { Assistant } from '@/lib/types';
+import { toast } from 'sonner';
 
-function App() {
-  const [count, setCount] = useState(0)
+type AppView =
+  | { type: 'none' }
+  | { type: 'detail'; assistantId: string }
+  | { type: 'chat'; assistantId: string; conversationId: string; conversationTitle: string };
+
+export default function App() {
+  const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [isLoadingAssistants, setIsLoadingAssistants] = useState(true);
+  const [view, setView] = useState<AppView>({ type: 'none' });
+  const [documentCounts, setDocumentCounts] = useState<Record<string, number>>({});
+
+  const loadAssistants = useCallback(async () => {
+    setIsLoadingAssistants(true);
+    try {
+      const list = await assistantsApi.list();
+      setAssistants(list);
+    } catch {
+      toast.error('Failed to load assistants');
+    } finally {
+      setIsLoadingAssistants(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAssistants();
+  }, [loadAssistants]);
+
+  const selectedAssistantId =
+    view.type === 'none' ? null : view.assistantId;
+
+  const selectedAssistant = assistants.find(a => a.id === selectedAssistantId) ?? null;
+
+  const handleDocumentCountChange = useCallback((assistantId: string, count: number) => {
+    setDocumentCounts(prev => ({ ...prev, [assistantId]: count }));
+  }, []);
+
+  function handleCreated(assistant: Assistant) {
+    setAssistants(prev => [...prev, assistant]);
+    setView({ type: 'detail', assistantId: assistant.id });
+  }
+
+  function handleUpdated(assistant: Assistant) {
+    setAssistants(prev => prev.map(a => (a.id === assistant.id ? assistant : a)));
+  }
+
+  function handleDeleted(id: string) {
+    setAssistants(prev => prev.filter(a => a.id !== id));
+    setView({ type: 'none' });
+  }
+
+  function handleOpenChat(conversationId: string, conversationTitle: string) {
+    if (!selectedAssistantId) return;
+    setView({ type: 'chat', assistantId: selectedAssistantId, conversationId, conversationTitle });
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <Layout
+      sidebar={
+        <AssistantList
+          assistants={assistants}
+          isLoading={isLoadingAssistants}
+          selectedId={selectedAssistantId}
+          documentCounts={documentCounts}
+          onSelect={id => setView({ type: 'detail', assistantId: id })}
+          onCreated={handleCreated}
+        />
+      }
+    >
+      {view.type === 'none' && <AssistantsPage />}
 
-      <div className="ticks"></div>
+      {view.type === 'detail' && selectedAssistant && (
+        <AssistantDetailPage
+          key={selectedAssistant.id}
+          assistant={selectedAssistant}
+          onUpdated={handleUpdated}
+          onDeleted={handleDeleted}
+          onOpenChat={handleOpenChat}
+          onDocumentCountChange={count =>
+            handleDocumentCountChange(selectedAssistant.id, count)
+          }
+        />
+      )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {view.type === 'chat' && (
+        <ChatPage
+          key={view.conversationId}
+          conversationId={view.conversationId}
+          conversationTitle={view.conversationTitle}
+          onBack={() =>
+            setView({ type: 'detail', assistantId: view.assistantId })
+          }
+        />
+      )}
+    </Layout>
+  );
 }
-
-export default App

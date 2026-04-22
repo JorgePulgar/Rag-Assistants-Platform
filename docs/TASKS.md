@@ -201,38 +201,38 @@ conversation demonstrates memory; backend restart preserves history.
 > styling, and microcopy. Every task in this phase must comply with it.
 > If something is not specified there, ask Jorge before improvising.
  
-- [ ] **T035** — *(Optional, 45–60 min)* Quick wireframe pass for the
+- [x] **T035** — *(Optional, 45–60 min)* Quick wireframe pass for the
   three views (assistant list, assistant detail, chat) in Excalidraw or
   on paper. Decide layout only: sidebar position, citation block
   placement, document uploader placement. If skipped, rely on
   `FRONTEND_SPEC.md` defaults.
-- [ ] **T035b** — Theme setup per `FRONTEND_SPEC.md`: Tailwind config
+- [x] **T035b** — Theme setup per `FRONTEND_SPEC.md`: Tailwind config
   with `darkMode: 'class'`, `ThemeProvider` at root with system
   preference default and `localStorage` override, theme toggle button
   in the header (Sun/Moon icons from lucide). Load Inter from Google
   Fonts. ⬅ T005
-- [ ] **T036** — API client in `frontend/src/api/client.ts` with axios.
+- [x] **T036** — API client in `frontend/src/api/client.ts` with axios.
   TS types mirroring the Pydantic schemas. ⬅ T005
-- [ ] **T037** — Main layout: sidebar with assistant list + main area. ⬅ T036
-- [ ] **T038** — Assistant list view: card per assistant, "New" button,
+- [x] **T037** — Main layout: sidebar with assistant list + main area. ⬅ T036
+- [x] **T038** — Assistant list view: card per assistant, "New" button,
   edit/delete buttons per card. ⬅ T037
-- [ ] **T039** — Assistant create/edit form inside a shadcn Dialog
+- [x] **T039** — Assistant create/edit form inside a shadcn Dialog
   (name, instructions, description). Basic validation. ⬅ T038
-- [ ] **T040** — Assistant detail view: info + document list + uploader.
+- [x] **T040** — Assistant detail view: info + document list + uploader.
   ⬅ T038
-- [ ] **T041** — Document uploader: file input + upload button +
+- [x] **T041** — Document uploader: file input + upload button +
   progress + list with a delete button per document. ⬅ T040
-- [ ] **T042** — Chat view: conversation list (per assistant),
+- [x] **T042** — Chat view: conversation list (per assistant),
   conversation selector, "new conversation" button, message history,
   message input, send button. ⬅ T037
-- [ ] **T043** — `MessageBubble` component with visual distinction
+- [x] **T043** — `MessageBubble` component with visual distinction
   between user and assistant. ⬅ T042
-- [ ] **T044** — `CitationBlock` component: `[1]`, `[2]` inline pills +
+- [x] **T044** — `CitationBlock` component: `[1]`, `[2]` inline pills +
   expandable panel on click with document name, page, snippet. ⬅ T042
-- [ ] **T045** — "Assistant is thinking" loading state in the chat
+- [x] **T045** — "Assistant is thinking" loading state in the chat
   (skeleton or spinner in the assistant bubble). ⬅ T042
-- [ ] **T046** — Error toasts (shadcn) for failed requests. ⬅ T036
-- [ ] **T047** — Commit and push.
+- [x] **T046** — Error toasts (shadcn) for failed requests. ⬅ T036
+- [x] **T047** — Commit and push.
 
 **Phase 5 checkpoint**: full end-to-end flow works from the browser —
 create assistant, upload document, start conversation, ask questions,
