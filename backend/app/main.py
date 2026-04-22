@@ -8,10 +8,11 @@ from fastapi.responses import JSONResponse
 
 import app.models  # noqa: F401 — registers all SQLAlchemy models with Base
 from app.api.assistants import router as assistants_router
+from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
 from app.config import settings
 from app.db import create_all_tables
-from app.exceptions import AssistantNotFoundError, DocumentNotFoundError
+from app.exceptions import AssistantNotFoundError, ConversationNotFoundError, DocumentNotFoundError
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -41,6 +42,7 @@ app.add_middleware(
 
 app.include_router(assistants_router)
 app.include_router(documents_router)
+app.include_router(chat_router)
 
 
 @app.exception_handler(AssistantNotFoundError)
@@ -50,6 +52,13 @@ async def _assistant_not_found(request: Request, exc: AssistantNotFoundError) ->
 
 @app.exception_handler(DocumentNotFoundError)
 async def _document_not_found(request: Request, exc: DocumentNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(ConversationNotFoundError)
+async def _conversation_not_found(
+    request: Request, exc: ConversationNotFoundError
+) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 

@@ -10,6 +10,12 @@ class DocumentNotFoundError(Exception):
         super().__init__(f"Document '{document_id}' not found")
 
 
+class ConversationNotFoundError(Exception):
+    def __init__(self, conversation_id: str) -> None:
+        self.conversation_id = conversation_id
+        super().__init__(f"Conversation '{conversation_id}' not found")
+
+
 class IngestionError(Exception):
     pass
 

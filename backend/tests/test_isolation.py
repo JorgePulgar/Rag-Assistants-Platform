@@ -5,12 +5,14 @@ Skipped automatically when AZURE_SEARCH_API_KEY is not set.
 Each test run uses unique index names and cleans up in a finally block.
 """
 import time
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 
 from app.clients import azure_search
 from app.config import settings
+from app.services.retrieval import retrieve
 
 pytestmark = pytest.mark.integration
 
@@ -167,3 +169,54 @@ def test_delete_document_removes_only_its_chunks() -> None:
 
     finally:
         azure_search.delete_index(index_name)
+
+
+def test_retrieval_service_does_not_cross_index_boundary() -> None:
+    """The retrieve() service must return zero chunks from a different assistant's index.
+
+    Assistant A's document is indexed in index_a. Index B is empty. Querying
+    index_b via the retrieve() service must return no results — structural
+    isolation ensures A's chunks cannot appear in B's index regardless of the
+    query vector.
+
+    embed_texts is patched so the test only requires AZURE_SEARCH_API_KEY.
+    """
+    suffix = uuid4().hex[:8]
+    index_a = f"test-ret-iso-a-{suffix}"
+    index_b = f"test-ret-iso-b-{suffix}"
+    doc_a_id = str(uuid4())
+
+    try:
+        azure_search.create_index_if_not_exists(index_a)
+        azure_search.create_index_if_not_exists(index_b)
+
+        azure_search.upload_documents(
+            index_a,
+            [
+                {
+                    "chunk_id": str(uuid4()),
+                    "document_id": doc_a_id,
+                    "document_name": "legal_contract.txt",
+                    "page": None,
+                    "section": None,
+                    "text": "Contract termination clause: 30 days written notice required.",
+                    "chunk_index": 0,
+                    "vector": _fake_vector(),
+                }
+            ],
+        )
+        # Index B is intentionally left empty.
+        time.sleep(3)
+
+        with patch("app.clients.azure_openai.embed_texts", return_value=[_fake_vector()]):
+            results = retrieve(index_b, "contract termination")
+
+        contaminated = [r for r in results if r.get("document_id") == doc_a_id]
+        assert contaminated == [], (
+            f"Isolation broken: {len(contaminated)} chunk(s) from assistant A "
+            f"appeared when querying assistant B's index via retrieve()."
+        )
+
+    finally:
+        azure_search.delete_index(index_a)
+        azure_search.delete_index(index_b)

@@ -139,15 +139,15 @@ reflects the current implementation.
 grounded in its documents, with structured citations, and the assistant
 remembers prior turns of the same conversation.
 
-- [ ] **T026** — `services/retrieval.py` `retrieve` function:
+- [x] **T026** — `services/retrieval.py` `retrieve` function:
   - embed the query
   - hybrid query to Azure Search (keyword + vector + semantic rerank)
   - filter by score threshold
   - return the top_k chunks with full metadata
   ⬅ T014, T015
-- [ ] **T027** — Pydantic schemas for `Conversation` and `Message`,
+- [x] **T027** — Pydantic schemas for `Conversation` and `Message`,
   including `citations` JSON shape. ⬅ T008
-- [ ] **T028** — `services/rag.py` `generate_response` function:
+- [x] **T028** — `services/rag.py` `generate_response` function:
   - load assistant and **last N messages** of the conversation from
     SQLite (this is the memory mechanism)
   - call retrieve for the current user message
@@ -160,7 +160,7 @@ remembers prior turns of the same conversation.
     structured objects
   - return `{content, citations}`
   ⬅ T026, T027
-- [ ] **T029** — Router `api/chat.py`:
+- [x] **T029** — Router `api/chat.py`:
   - `POST /conversations` creates a conversation
   - `GET /assistants/{id}/conversations` lists them
   - `GET /conversations/{id}/messages` returns full history
@@ -169,21 +169,21 @@ remembers prior turns of the same conversation.
     citations, returns the assistant message
   - `DELETE /conversations/{id}`
   ⬅ T028
-- [ ] **T030** — Test `test_rag_prompt.py` covering the three RAG_SPEC
+- [x] **T030** — Test `test_rag_prompt.py` covering the three RAG_SPEC
   cases: with context, without context, with long history (trim
   verification). ⬅ T028
-- [ ] **T031** — End-to-end isolation test: ask assistant B about a
+- [x] **T031** — End-to-end isolation test: ask assistant B about a
   topic from assistant A's documents, verify "I don't know". ⬅ T029
-- [ ] **T032** — **Memory smoke test** (manual or scripted): send three
+- [x] **T032** — **Memory smoke test** (manual or scripted): send three
   sequential messages in one conversation where each one references the
   previous ("What does the contract say about clause 3?" → "And about
   clause 4?" → "Summarise what we discussed."). Verify the assistant
   answers coherently, demonstrating memory. ⬅ T029
-- [ ] **T033** — **Persistence smoke test** (manual): restart the
+- [x] **T033** — **Persistence smoke test** (manual): restart the
   backend process, reload the conversation via
   `GET /conversations/{id}/messages`, verify the full history is intact.
   ⬅ T029
-- [ ] **T034** — Commit and push.
+- [x] **T034** — Commit and push.
 
 **Phase 4 checkpoint**: `curl` to the chat endpoint on an assistant with
 documents returns a coherent answer with citations; on an assistant
