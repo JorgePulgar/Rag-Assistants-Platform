@@ -2,11 +2,15 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+import app.models  # noqa: F401 — registers all SQLAlchemy models with Base
+from app.api.assistants import router as assistants_router
 from app.config import settings
 from app.db import create_all_tables
+from app.exceptions import AssistantNotFoundError
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -33,6 +37,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(assistants_router)
+
+
+@app.exception_handler(AssistantNotFoundError)
+async def _assistant_not_found(request: Request, exc: AssistantNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.get("/health")
