@@ -263,7 +263,7 @@ to Phase 6 until Phase 4.5's checkpoint passes.**
   Must produce visible pytest output. No "I tried it manually"
   shortcuts. ⬅ T047b
 
-- [ ] **T047e** — Automated test for Bug 2 fix in
+- [x] **T047e** — Automated test for Bug 2 fix in
   `backend/tests/test_conversational_memory.py`:
   - Set up an assistant with a document containing two distinct topics
     (one test fixture PDF with two clearly separable sections).
