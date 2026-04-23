@@ -277,7 +277,7 @@ to Phase 6 until Phase 4.5's checkpoint passes.**
     topic B in the fixture.
   Must produce visible pytest output. ⬅ T047c
 
-- [ ] **T047f** — Retrospective audit of T023 (isolation, Phase 2),
+- [x] **T047f** — Retrospective audit of T023 (isolation, Phase 2),
   T030 (RAG prompt cases, Phase 4), T031 (E2E isolation, Phase 4),
   T032 (memory smoke test, Phase 4), T033 (persistence smoke test,
   Phase 4). For each:
