@@ -69,7 +69,20 @@ Load them when the task requires them. Do not load them preemptively.
 - **Full typing** in Python (type hints) and TypeScript (strict).
 - **Commit messages** follow `CODING_CONVENTIONS.md`.
 - **One commit per coherent change**. Do not group unrelated edits.
-- **Ask** on any material doubt about design or scope.
+  This includes: never batch an entire phase into a single commit.
+  Phase 4 was closed with a single commit in an earlier session and
+  that is a pattern to avoid.
+  - **Ask** on any material doubt about design or scope.
+  - **Smoke tests and manual checks require artefacts**. When a task
+  describes a "smoke test", "verify manually", or similar, the `[x]`
+  mark is only valid when there is a visible artefact: pytest output
+  captured in the commit, a saved `scripts/smoke/*.py` script that
+  can be re-run, or a documented `curl` sequence with expected
+  responses. A sentence in `PROGRESS.md` saying "verified manually"
+  without supporting evidence is NOT sufficient. When in doubt,
+  write an automated test. This rule exists because T032 was
+  previously marked `[x]` without a real test and hid Bug 2 for a
+  full phase.
 
 ### RAG core rules
 

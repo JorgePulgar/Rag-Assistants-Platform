@@ -126,19 +126,114 @@ for Spanish-language documents. This is deliberate because we expect demo
 content in Spanish. For an English-only corpus we would switch to
 `en.microsoft`.
 
+## Query rewriting (for conversational queries)
+
+**Problem it solves**: the user's current message is often not
+semantically self-contained. In a 3-turn conversation, turn 3 might be
+"tell me more about point 2 from your previous answer". The raw
+embedding of that sentence has zero topical signal — retrieval returns
+irrelevant chunks, the LLM receives wrong context, and the answer goes
+off-topic even though the conversation history is loaded correctly.
+
+**When it runs**: always, except on the first message of a conversation
+(no history → the user's message is the query as-is).
+
+**How it works**:
+
+1. Collect the last N history messages (we use 4 — two user/assistant
+   pairs — to keep prompt size bounded).
+2. Make a cheap LLM call to `gpt-4o-mini` with this system prompt:
+
+```
+You rewrite follow-up questions into standalone search queries.
+
+Given a conversation history and the user's current message, produce a
+single sentence that captures what the user is asking about, including
+enough topical context from prior turns to be meaningful on its own.
+
+Rules:
+- Output ONLY the rewritten query. No explanation, no quotes, no prefix.
+- If the user's message is already self-contained (introduces a new
+  topic), return it unchanged.
+- Keep the user's language (Spanish queries stay in Spanish).
+- Preserve specific proper nouns, numbers, and technical terms from the
+  history.
+- Target length: 10–30 words.
+```
+
+3. Use the rewritten query as input to the retrieval step (embedding +
+   Azure Search). The **original** user message is still the one stored
+   in the database and shown in the UI — rewriting is an internal
+   retrieval concern.
+
+**Example**:
+
+```
+History:
+  user:      "What does section 2 of your documents say?"
+  assistant: "Section 2 covers two topics: (1) Procedimiento de apremio,
+              and (2) Régimen exterior de la Unión."
+
+Current user message: "Tell me more about point 2"
+
+Rewritten query: "Régimen exterior de la Unión: empresarios no
+  establecidos en la Comunidad que prestan servicios"
+```
+
+**Cost**: one extra LLM call per user message when there is history.
+With `gpt-4o-mini` this adds ~300–600 ms of latency and a few hundred
+tokens — negligible for the UX gain. Configurable via
+`QUERY_REWRITING_ENABLED=true` in `.env` in case it ever needs to be
+disabled for debugging.
+
+**Logging**: when rewriting fires, log both the original and the
+rewritten query at INFO level so the behaviour is auditable.
+
+## Index lifecycle
+
+Per `CONSTITUTION.md` §1, **creating an assistant implies creating its
+Azure AI Search index**. The operations are transactional with the
+SQLite row:
+
+- On `POST /api/assistants` → create SQLite row + create Azure Search
+  index. If index creation fails, the SQLite row must be rolled back.
+- On `DELETE /api/assistants/{id}` → delete Azure Search index + delete
+  SQLite row.
+
+This is NOT a lazy operation. The index exists from the moment the
+assistant exists, even before any document is uploaded. Rationale:
+the alternative (lazy creation on first document upload) breaks the
+"I don't know" behaviour — a query against a non-existent index raises
+`ResourceNotFoundError` instead of returning empty results, which
+surfaces to the user as a generic 500 error.
+
+**Empty index behaviour**: an index with no documents is a perfectly
+valid state. A retrieval query against an empty index returns zero
+results, which triggers the hardcoded "I don't know" response path as
+designed.
+
 ## Retrieval
 
 Given a user message:
 
-1. Generate the message embedding (`text-embedding-3-small`).
-2. Hybrid query against Azure AI Search:
+1. **Query rewriting** (if there is conversation history): produce a
+   standalone search query per the §"Query rewriting" section above.
+   Otherwise the query is the user's raw message.
+2. Generate the query embedding (`text-embedding-3-small`).
+3. Hybrid query against Azure AI Search:
    - Keyword search over `text` (Spanish analyzer).
    - Vector search over `vector` (k_nearest_neighbors=10).
    - Reciprocal Rank Fusion + semantic reranking.
-3. Take the top 5 results.
-4. Drop any result with `@search.reranker_score < 1.5` (Azure semantic
-   reranker uses a 0–4 scale). This threshold is tuned empirically on
-   Day 3 against real documents; 1.5 is a conservative starting point.
+4. Take the top 5 results.
+5. Drop any result with `@search.reranker_score < 1.5` (Azure semantic
+   reranker uses a 0–4 scale). This threshold is tuned empirically
+   against real documents; 1.5 is a conservative starting point.
+
+**Error handling**: if Azure AI Search returns `ResourceNotFoundError`
+for an index that should exist (per the lifecycle above, it always
+should), log the error and treat the retrieval as empty. Do not
+propagate the error — user-facing failures for retrieval issues are
+not acceptable.
 
 **If after filtering zero chunks remain**: the "I don't know" path fires —
 we do not call the LLM (saving cost) and return a hardcoded response
@@ -208,11 +303,19 @@ if it remembers the conversation. Concretely:
 and consumes tokens. If during the demo the LLM loses context from much
 older messages within the same thread, raise `HISTORY_MAX_MESSAGES` to 20.
 
-**Design note on retrieval + memory interaction**: retrieval runs only
-against the *current* user message, not against the whole history. This
-is deliberate. Retrieving on every historical turn would waste tokens
-and quota, and for follow-ups the LLM can usually resolve references
-from the prior turns already in context.
+**Design note on retrieval + memory interaction**: retrieval does NOT
+run over the full history. Instead, the current user message is first
+**rewritten into a standalone query** using the query rewriting step
+(see §"Query rewriting"), and that rewritten query is what is embedded
+and sent to Azure Search. This resolves referential follow-ups ("tell
+me more about point 2") without the cost of embedding every historical
+turn. The full history is still injected into the LLM's prompt as
+messages — so the model has both the enriched retrieval context and
+the conversational flow.
+
+**History note**: this is a revision of an earlier design that passed
+the raw user message to retrieval. That earlier design failed on
+referential follow-ups (see Phase 4.5 bugfix notes in `TASKS.md`).
 
 ## Response post-processing
 
@@ -280,3 +383,5 @@ Everything below lives in `.env` and can be tuned without touching code:
 | `RETRIEVAL_TOP_K`           | 5       | 3 – 10          |
 | `RETRIEVAL_SCORE_THRESHOLD` | 1.5     | 1.0 – 2.5       |
 | `HISTORY_MAX_MESSAGES`      | 10      | 4 – 20          |
+| `QUERY_REWRITING_ENABLED`   | true    | true / false    |
+| `QUERY_REWRITING_HISTORY_N` | 4       | 2 – 8           |

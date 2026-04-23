@@ -192,6 +192,112 @@ conversation demonstrates memory; backend restart preserves history.
 
 ---
 
+## Phase 4.5 — Bugfixes and test remediation
+
+**Goal**: fix two bugs in Phase 4 discovered during Phase 5 usage, and
+audit the smoke-test-style tasks from earlier phases for real test
+coverage.
+
+**Context**: two bugs were found while exercising the app with real
+documents.
+1. **Bug 1**: sending a message to an assistant with no documents
+   returned 500 "Failed to send message" instead of the hardcoded
+   "I don't know" response. Root cause: Azure AI Search index was
+   created lazily on first document upload; an assistant without
+   documents has no index, and a query against a non-existent index
+   raised `ResourceNotFoundError` that propagated as 500. This also
+   violated `CONSTITUTION.md` §1 ("creating an assistant implies
+   creating its index").
+2. **Bug 2**: conversational memory failed on referential follow-ups
+   ("tell me more about point 2"). Root cause: retrieval used the raw
+   user message as the query, which for short referential phrases has
+   no topical signal — Azure returned irrelevant chunks, the LLM
+   received wrong context, and the answer went off-topic even though
+   the history was loaded into the prompt correctly.
+
+Additionally, the audit below confirmed that T032 was marked `[x]`
+without a genuine test covering referential follow-ups — the manual
+smoke test used self-contained questions that hid the real failure mode.
+
+**Phase 4.5 blocks the start of Phase 6 polish work. Do NOT proceed
+to Phase 6 until Phase 4.5's checkpoint passes.**
+
+- [ ] **T047a** — Update `docs/RAG_SPEC.md` with: (1) a new
+  "Query rewriting" section describing the LLM-based standalone-query
+  generation pattern; (2) a new "Index lifecycle" section clarifying
+  that index creation is eager, not lazy, transactional with the
+  SQLite row, per `CONSTITUTION.md` §1; (3) updated "Design note" in
+  the History section. *(Done by Jorge beforehand — mark `[x]` on
+  receipt.)*
+
+- [ ] **T047b** — Bug 1 fix (Option B, architectural): move index
+  creation from `services/ingestion.py` (lazy, first upload) to
+  `services/assistant_service.py` create path (eager). Call
+  `azure_search.create_index_if_not_exists()` when the assistant row
+  is committed. If index creation fails, roll back the SQLite row
+  (transactional). The delete path already removes the index — verify.
+  Also: in `services/retrieval.py`, add defensive handling for
+  `ResourceNotFoundError` that logs the anomaly and returns `[]`
+  (belt-and-braces; this path should no longer trigger under normal
+  operation but protects against orphaned state). ⬅ T047a
+
+- [ ] **T047c** — Bug 2 fix: implement query rewriting per
+  RAG_SPEC.md §"Query rewriting". New function in `services/rag.py`
+  (or a new `services/query_rewriter.py`) that, when history exists,
+  makes an LLM call to rewrite the user message into a standalone
+  search query using the last `QUERY_REWRITING_HISTORY_N=4` history
+  messages. The rewritten query is passed to `retrieve()`. The
+  original user message is still what is stored in SQLite and shown
+  in the UI. Feature-flagged behind `QUERY_REWRITING_ENABLED=true`.
+  Log both original and rewritten queries at INFO level. ⬅ T047a
+
+- [ ] **T047d** — Automated test for Bug 1 fix in
+  `backend/tests/test_idk_behaviour.py`:
+  - Create an assistant with no documents.
+  - Create a conversation on it.
+  - POST a message.
+  - Assert: response is 200.
+  - Assert: response body contains the hardcoded "I don't have
+    information…" string.
+  - Assert: `citations` is empty.
+  Must produce visible pytest output. No "I tried it manually"
+  shortcuts. ⬅ T047b
+
+- [ ] **T047e** — Automated test for Bug 2 fix in
+  `backend/tests/test_conversational_memory.py`:
+  - Set up an assistant with a document containing two distinct topics
+    (one test fixture PDF with two clearly separable sections).
+  - Turn 1: ask a general question that produces an assistant answer
+    listing both topics by number ("(1) topic A, (2) topic B").
+  - Turn 2: send "tell me more about point 2".
+  - Assert: the rewritten query (captured via log or by exposing a
+    test hook on the rewriter) contains keywords from topic B and NOT
+    from topic A.
+  - Assert: the retrieved chunks for turn 2 are the chunks tagged as
+    topic B in the fixture.
+  Must produce visible pytest output. ⬅ T047c
+
+- [ ] **T047f** — Retrospective audit of T023 (isolation, Phase 2),
+  T030 (RAG prompt cases, Phase 4), T031 (E2E isolation, Phase 4),
+  T032 (memory smoke test, Phase 4), T033 (persistence smoke test,
+  Phase 4). For each:
+  1. Inspect the test file (or lack thereof).
+  2. Run the test and capture output.
+  3. If the task was marked `[x]` without a real automated test, write
+     one now.
+  4. Document the audit result in `docs/PROGRESS.md` with one line per
+     audited task: "T0XX — [pass / rewritten / added]". ⬅ T047b, T047c
+
+- [ ] **T047g** — Phase 4.5 final commit and push. Note: per
+  `CONSTITUTION.md` §7, T047b through T047f each had their own
+  commit. This task is just the final push and PROGRESS.md update.
+
+**Phase 4.5 checkpoint**: both bugs fixed, both regression tests green,
+retrospective audit complete and documented in PROGRESS.md, all commits
+pushed.
+
+---
+
 ## Phase 5 — Frontend
 
 **Goal**: functional UI with the three views wired to the backend.
