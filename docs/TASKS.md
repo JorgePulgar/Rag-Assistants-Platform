@@ -288,7 +288,7 @@ to Phase 6 until Phase 4.5's checkpoint passes.**
   4. Document the audit result in `docs/PROGRESS.md` with one line per
      audited task: "T0XX — [pass / rewritten / added]". ⬅ T047b, T047c
 
-- [ ] **T047g** — Phase 4.5 final commit and push. Note: per
+- [x] **T047g** — Phase 4.5 final commit and push. Note: per
   `CONSTITUTION.md` §7, T047b through T047f each had their own
   commit. This task is just the final push and PROGRESS.md update.
 
