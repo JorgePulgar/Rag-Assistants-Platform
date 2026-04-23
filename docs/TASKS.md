@@ -222,7 +222,7 @@ smoke test used self-contained questions that hid the real failure mode.
 **Phase 4.5 blocks the start of Phase 6 polish work. Do NOT proceed
 to Phase 6 until Phase 4.5's checkpoint passes.**
 
-- [ ] **T047a** — Update `docs/RAG_SPEC.md` with: (1) a new
+- [x] **T047a** — Update `docs/RAG_SPEC.md` with: (1) a new
   "Query rewriting" section describing the LLM-based standalone-query
   generation pattern; (2) a new "Index lifecycle" section clarifying
   that index creation is eager, not lazy, transactional with the
