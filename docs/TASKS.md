@@ -241,7 +241,7 @@ to Phase 6 until Phase 4.5's checkpoint passes.**
   (belt-and-braces; this path should no longer trigger under normal
   operation but protects against orphaned state). ⬅ T047a
 
-- [ ] **T047c** — Bug 2 fix: implement query rewriting per
+- [x] **T047c** — Bug 2 fix: implement query rewriting per
   RAG_SPEC.md §"Query rewriting". New function in `services/rag.py`
   (or a new `services/query_rewriter.py`) that, when history exists,
   makes an LLM call to rewrite the user message into a standalone

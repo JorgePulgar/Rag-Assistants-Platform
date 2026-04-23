@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 5
     retrieval_score_threshold: float = 1.5
     history_max_messages: int = 10
+    query_rewriting_enabled: bool = True
+    query_rewriting_history_n: int = 4
 
     # Logging
     log_level: str = "INFO"

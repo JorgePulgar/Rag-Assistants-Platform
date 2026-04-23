@@ -8,6 +8,7 @@ from app.clients import azure_openai
 from app.config import settings
 from app.models.assistant import Assistant
 from app.models.message import Message
+from app.services import query_rewriter
 from app.services.retrieval import retrieve
 
 logger = logging.getLogger(__name__)
@@ -92,17 +93,8 @@ def generate_response(
     Returns:
         Dict with "content" (str) and "citations" (list[dict]).
     """
-    chunks = retrieve(assistant.search_index, user_message_content)
-
-    if not chunks:
-        logger.info(
-            "No chunks above threshold for conversation %s — returning hardcoded no-context response",
-            conversation_id,
-        )
-        return {"content": _NO_CONTEXT_RESPONSE, "citations": []}
-
-    # Load the last N messages as prior context (memory).
-    # .desc() + .limit() gives us the most recent N; .reverse() restores chronological order.
+    # Load history first: needed for query rewriting and for the LLM prompt.
+    # .desc() + .limit() gives the most recent N; .reverse() restores chronological order.
     history = (
         db.query(Message)
         .filter(Message.conversation_id == conversation_id)
@@ -112,11 +104,29 @@ def generate_response(
     )
     history.reverse()
 
+    # Query rewriting: when there is prior history, produce a standalone search
+    # query so that referential follow-ups ("tell me more about point 2") embed
+    # with topical signal rather than the raw short phrase.
+    search_query = user_message_content
+    if settings.query_rewriting_enabled and history:
+        rewrite_history = history[-settings.query_rewriting_history_n :]
+        search_query = query_rewriter.rewrite_query(rewrite_history, user_message_content)
+
+    chunks = retrieve(assistant.search_index, search_query)
+
+    if not chunks:
+        logger.info(
+            "No chunks above threshold for conversation %s — returning hardcoded no-context response",
+            conversation_id,
+        )
+        return {"content": _NO_CONTEXT_RESPONSE, "citations": []}
+
     system_prompt = assistant.instructions + _BEHAVIOUR_RULES
     messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
     for msg in history:
         messages.append({"role": msg.role, "content": msg.content})
 
+    # Context block uses the original user message (rewriting is an internal retrieval concern).
     context_block = _build_context_block(chunks, user_message_content)
     messages.append({"role": "user", "content": context_block})
 
