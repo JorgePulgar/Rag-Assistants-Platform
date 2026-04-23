@@ -35,6 +35,12 @@ def create_assistant(db: Session, data: AssistantCreate) -> AssistantRead:
         updated_at=now,
     )
     db.add(assistant)
+    # Create the Azure Search index before committing; if it fails the row is never persisted.
+    try:
+        azure_search.create_index_if_not_exists(assistant.search_index)
+    except Exception:
+        db.rollback()
+        raise
     db.commit()
     db.refresh(assistant)
     return AssistantRead.model_validate(assistant)

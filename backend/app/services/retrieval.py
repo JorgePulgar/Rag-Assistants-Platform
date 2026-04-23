@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from azure.core.exceptions import ResourceNotFoundError
+
 from app.clients import azure_openai, azure_search
 from app.config import settings
 from app.exceptions import RetrievalError
@@ -31,6 +33,11 @@ def retrieve(index_name: str, query: str) -> list[dict[str, Any]]:
             query_embedding=embedding,
             top_k=settings.retrieval_top_k,
         )
+    except ResourceNotFoundError:
+        # Index missing despite eager creation — orphaned assistant state.
+        # Log and return empty so the "I don't know" path fires instead of 500.
+        logger.error("Index %s not found — orphaned assistant state. Returning empty results.", index_name)
+        return []
     except Exception as exc:
         raise RetrievalError(f"Azure AI Search query failed: {exc}") from exc
 

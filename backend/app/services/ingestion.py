@@ -71,13 +71,10 @@ def index_document(db: Session, document_id: str, file_path: str) -> None:
         for chunk, embedding in zip(all_chunks, embeddings):
             chunk["vector"] = embedding
 
-        # 4. Create the per-assistant index if this is the first document
-        azure_search.create_index_if_not_exists(assistant.search_index)
-
-        # 5. Upload chunks
+        # 4. Upload chunks (index was created eagerly on assistant creation)
         azure_search.upload_documents(assistant.search_index, all_chunks)
 
-        # 6. Mark indexed
+        # 5. Mark indexed
         document.chunk_count = len(all_chunks)
         document.status = "indexed"
         db.commit()

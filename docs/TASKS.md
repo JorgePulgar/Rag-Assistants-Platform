@@ -230,7 +230,7 @@ to Phase 6 until Phase 4.5's checkpoint passes.**
   the History section. *(Done by Jorge beforehand — mark `[x]` on
   receipt.)*
 
-- [ ] **T047b** — Bug 1 fix (Option B, architectural): move index
+- [x] **T047b** — Bug 1 fix (Option B, architectural): move index
   creation from `services/ingestion.py` (lazy, first upload) to
   `services/assistant_service.py` create path (eager). Call
   `azure_search.create_index_if_not_exists()` when the assistant row
