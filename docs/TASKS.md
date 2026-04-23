@@ -251,7 +251,7 @@ to Phase 6 until Phase 4.5's checkpoint passes.**
   in the UI. Feature-flagged behind `QUERY_REWRITING_ENABLED=true`.
   Log both original and rewritten queries at INFO level. ⬅ T047a
 
-- [ ] **T047d** — Automated test for Bug 1 fix in
+- [x] **T047d** — Automated test for Bug 1 fix in
   `backend/tests/test_idk_behaviour.py`:
   - Create an assistant with no documents.
   - Create a conversation on it.
