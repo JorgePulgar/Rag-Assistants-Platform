@@ -18,7 +18,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   const citations = message.citations ?? [];
-  const noContext = citations.length === 0;
+
+  // Warning style applies only to the two known "I don't know" response prefixes:
+  // the hardcoded empty-retrieval message and the LLM's Rule-2 fallback.
+  const IDK_PREFIXES = [
+    "I did not find relevant information in this assistant's documents to answer your question.",
+    "I don't have enough information in my documents to answer this question.",
+  ];
+  const isIdk = IDK_PREFIXES.some((p) => message.content.startsWith(p));
 
   return (
     <div className="flex items-start gap-3 mt-6">
@@ -29,12 +36,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <div
         className={[
           'max-w-[85%] text-sm leading-relaxed',
-          noContext
+          isIdk
             ? 'flex items-start gap-2 text-neutral-600 dark:text-neutral-400'
             : 'text-neutral-900 dark:text-neutral-100',
         ].join(' ')}
       >
-        {noContext && (
+        {isIdk && (
           <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
         )}
         <span className="whitespace-pre-wrap">

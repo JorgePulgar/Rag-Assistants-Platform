@@ -332,7 +332,7 @@ logic for no-search intent are already specified in the updated
   - Log at INFO level that retrieval was skipped due to no-search
     intent.
   ⬅ T047h
-- [ ] **T047j** — Frontend fix: the amber "warning" style
+- [x] **T047j** — Frontend fix: the amber "warning" style
   (`AlertCircle` icon + neutral-600 text, per `FRONTEND_SPEC.md`
   §"I don't know state") must apply ONLY to the hardcoded
   "I don't have information…" response, not to every assistant
