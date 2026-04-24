@@ -298,6 +298,85 @@ pushed.
 
 ---
 
+### Phase 4.5 — Follow-up fixes (post-testing)
+ 
+**Context**: after Phase 4.5 closed with T047a–T047g, real UI testing
+surfaced three remaining issues. These are not new bugs — they are
+residual symptoms of the same areas Phase 4.5 touched, and are fixed
+in this follow-up batch before moving on to Phase 6. The updated
+prompts (both for the RAG and the rewriter) and the skip-retrieval
+logic for no-search intent are already specified in the updated
+`RAG_SPEC.md` sections §"System prompt" and §"Query rewriting".
+ 
+- [x] **T047h** — Sync system prompts in code with updated
+  `RAG_SPEC.md`:
+  - Update the RAG system prompt in `services/rag.py` (or wherever
+    it lives) to match the new 6-rule version in RAG_SPEC §"System
+    prompt", including the elaboration allowance in Rule 1, the
+    citation-format rules of Rule 3, and the language rule of Rule 6.
+  - Update the rewriter system prompt in
+    `services/query_rewriter.py` to match the new expanded version
+    in RAG_SPEC §"Query rewriting", including the four examples and
+    the NO-SEARCH INTENT rule.
+  Do not invent wording; copy the prompts verbatim from the spec.
+  *(Done manually by Jorge; marked [x] on acceptance.)*
+- [ ] **T047i** — Skip retrieval on no-search intent, per RAG_SPEC
+  §"Query rewriting" →"No-search intent handling in code". In
+  `services/rag.py` (or `services/query_rewriter.py`), after the
+  rewriter returns, detect no-search intent using the heuristic in
+  the spec (rewritten == original AND short/chit-chat). If detected:
+  - Skip the retrieval step entirely.
+  - Call the LLM with only the system prompt + history + user
+    message (no CONTEXT block).
+  - Return the response with `citations=[]`.
+  - Log at INFO level that retrieval was skipped due to no-search
+    intent.
+  ⬅ T047h
+- [ ] **T047j** — Frontend fix: the amber "warning" style
+  (`AlertCircle` icon + neutral-600 text, per `FRONTEND_SPEC.md`
+  §"I don't know state") must apply ONLY to the hardcoded
+  "I don't have information…" response, not to every assistant
+  message. Current behaviour applies it to every assistant bubble.
+  Fix: in `MessageBubble` (or the relevant component), detect the
+  hardcoded message by exact prefix match on the known string and
+  apply the warning style only in that case. All other assistant
+  messages use the default assistant style from FRONTEND_SPEC
+  §"Assistant message".
+- [ ] **T047k** — Citation rendering fix: inline `[CITE:chunk_id]`
+  markers sometimes render as literal text instead of being replaced
+  by `[1]`, `[2]`, ... clickable pills. Diagnose in the backend
+  post-processing function (likely in `services/rag.py`) — inspect
+  the regex used to extract chunk IDs and verify it handles the
+  actual chunk_id format (UUID with dashes, or whatever format is
+  produced by the ingestion pipeline). Add a unit test covering at
+  least three cases: single citation, multiple consecutive citations
+  (`[CITE:id1][CITE:id2]`), and citation at end of sentence. On the
+  frontend side, verify `CitationBlock` correctly renders `[1]`
+  pills from the `citations` array. ⬅ T047h
+- [ ] **T047l** — Automated regression test for the elaboration case
+  that was failing (Rule 1 fix). In
+  `backend/tests/test_conversational_memory.py` or a new file, add
+  a test that:
+  - Sets up an assistant with a document containing explainable
+    content.
+  - Turn 1: asks a question that elicits a structured answer.
+  - Turn 2: asks "can you expand more on that last part?" (or
+    equivalent Spanish phrasing).
+  - Asserts: the assistant response is NOT the hardcoded "I don't
+    know" string AND contains more than a trivial character count
+    (e.g., > 100 chars).
+  Must produce visible pytest output. ⬅ T047h
+- [ ] **T047m** — Follow-up commits and push. Each of T047h–T047l
+  gets its own commit per CONSTITUTION §7. This task is just the
+  final push and a PROGRESS.md line summarising the follow-up batch.
+**Phase 4.5 final checkpoint** (supersedes the previous one): both
+original bugs fixed, all three follow-up issues fixed, prompts in code
+match the spec, regression tests green for elaboration and
+conversational memory, frontend applies warning style only to the
+hardcoded message, citations render as pills consistently.
+
+---
+
 ## Phase 5 — Frontend
 
 **Goal**: functional UI with the three views wired to the backend.
