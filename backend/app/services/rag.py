@@ -108,9 +108,26 @@ def generate_response(
     # query so that referential follow-ups ("tell me more about point 2") embed
     # with topical signal rather than the raw short phrase.
     search_query = user_message_content
-    if settings.query_rewriting_enabled and history:
+    rewriting_ran = settings.query_rewriting_enabled and bool(history)
+    if rewriting_ran:
         rewrite_history = history[-settings.query_rewriting_history_n :]
         search_query = query_rewriter.rewrite_query(rewrite_history, user_message_content)
+
+    # No-search intent: the rewriter returned the message unchanged AND it is short
+    # enough to be chit-chat / greeting / formatting instruction rather than a real
+    # search query. Skip retrieval and let the LLM answer from history alone.
+    if rewriting_ran and search_query == user_message_content and len(user_message_content.split()) <= 10:
+        logger.info(
+            "No-search intent detected for conversation %s — skipping retrieval",
+            conversation_id,
+        )
+        system_prompt = assistant.instructions + _BEHAVIOUR_RULES
+        no_search_messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+        for msg in history:
+            no_search_messages.append({"role": msg.role, "content": msg.content})
+        no_search_messages.append({"role": "user", "content": user_message_content})
+        raw_response = azure_openai.call_llm(no_search_messages)
+        return {"content": raw_response, "citations": []}
 
     chunks = retrieve(assistant.search_index, search_query)
 

@@ -111,8 +111,9 @@ def test_with_context_calls_llm_and_includes_all_prompt_sections():
 
     with (
         patch("app.services.rag.retrieve", return_value=[chunk]),
-        # Bypass query rewriting so fake_llm only sees the main RAG call.
-        patch("app.services.rag.query_rewriter.rewrite_query", return_value="Tell me about clause 4."),
+        # Rewriter returns an enriched query (different from original) so the no-search-intent
+        # heuristic does not fire and the test reaches the retrieval + LLM path.
+        patch("app.services.rag.query_rewriter.rewrite_query", return_value="What does clause 4 of the contract say about obligations?"),
         patch("app.clients.azure_openai.call_llm", side_effect=fake_llm),
     ):
         result = rag.generate_response(db, assistant, conv.id, "Tell me about clause 4.")

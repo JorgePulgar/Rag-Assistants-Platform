@@ -320,7 +320,7 @@ logic for no-search intent are already specified in the updated
     the NO-SEARCH INTENT rule.
   Do not invent wording; copy the prompts verbatim from the spec.
   *(Done manually by Jorge; marked [x] on acceptance.)*
-- [ ] **T047i** — Skip retrieval on no-search intent, per RAG_SPEC
+- [x] **T047i** — Skip retrieval on no-search intent, per RAG_SPEC
   §"Query rewriting" →"No-search intent handling in code". In
   `services/rag.py` (or `services/query_rewriter.py`), after the
   rewriter returns, detect no-search intent using the heuristic in
