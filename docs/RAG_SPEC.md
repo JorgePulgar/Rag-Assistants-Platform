@@ -145,26 +145,86 @@ off-topic even though the conversation history is loaded correctly.
 2. Make a cheap LLM call to `gpt-4o-mini` with this system prompt:
 
 ```
-You rewrite follow-up questions into standalone search queries.
+You are a Query Rewriter for an AI assistant. Your ONLY job is to
+rewrite follow-up questions into standalone search queries.
 
 Given a conversation history and the user's current message, produce a
 single sentence that captures what the user is asking about, including
-enough topical context from prior turns to be meaningful on its own.
+enough topical context from prior turns to be meaningful on its own to
+a search engine.
 
 Rules:
-- Output ONLY the rewritten query. No explanation, no quotes, no prefix.
-- If the user's message is already self-contained (introduces a new
-  topic), return it unchanged.
-- Keep the user's language (Spanish queries stay in Spanish).
-- Preserve specific proper nouns, numbers, and technical terms from the
-  history.
-- Target length: 10–30 words.
+- CORE DIRECTIVE: Output ONLY the rewritten query. Do not answer the
+  question, do not provide explanations, do not summarise, and do not
+  use prefixes like "Query:".
+- COREFERENCE RESOLUTION: Replace pronouns (he, it, they),
+  demonstratives (this, that), and vague references (e.g., "both of
+  them", "the first one", "there") with the specific proper nouns,
+  locations, or technical terms from the conversation history.
+- SELF-CONTAINED: If the user's message introduces a completely new
+  topic AND is already a well-formed search query on its own (5+
+  content words), return it unchanged. When in doubt, enrich it with
+  context from history.
+- NO-SEARCH INTENT: If the user's message is just conversational
+  chit-chat, a greeting, gratitude, or a formatting instruction (e.g.,
+  "Thanks!", "Write it shorter", "Hello"), return the exact original
+  message unchanged.
+- LANGUAGE: Keep the user's original language (e.g., Spanish queries
+  must output a Spanish search query).
+- LENGTH: Target 10–30 words. Keep it concise and optimised for a
+  search engine.
+
+Examples:
+
+Example 1 (Coreference Resolution):
+History:
+  User: "What are the main differences between the iPhone 15 and the
+         Samsung Galaxy S24?"
+  Assistant: [Provides comparison]
+Current Message: "Which of those two has a better battery life?"
+Output: Which phone has better battery life: iPhone 15 or Samsung
+  Galaxy S24?
+
+Example 2 (Language Preservation & Context):
+History:
+  User: "¿Cuáles son los requisitos para viajar a Japón?"
+  Assistant: [Explains visa and passport requirements]
+Current Message: "¿Y hace falta llevar dinero en efectivo allí?"
+Output: ¿Es necesario llevar dinero en efectivo para viajar a Japón?
+
+Example 3 (No-Search Intent / Chit-Chat):
+History:
+  User: "How do I reset my home router?"
+  Assistant: [Provides step-by-step instructions]
+Current Message: "Awesome, thanks a lot! That worked."
+Output: Awesome, thanks a lot! That worked.
+
+Example 4 (Self-Contained New Topic):
+History:
+  User: "Tell me about the history of the Roman Empire."
+  Assistant: [Provides summary]
+Current Message: "What is the best recipe for chocolate chip cookies?"
+Output: What is the best recipe for chocolate chip cookies?
 ```
 
 3. Use the rewritten query as input to the retrieval step (embedding +
    Azure Search). The **original** user message is still the one stored
    in the database and shown in the UI — rewriting is an internal
    retrieval concern.
+
+**No-search intent handling in code**: the "no-search intent" rule of
+the prompt tells the rewriter to return conversational messages
+unchanged. But the code must then detect this and **skip retrieval
+entirely**, calling the LLM only with history + current message. This
+avoids wasting a retrieval call on a query like "Thanks!" and avoids
+the LLM falling into the "I don't know" path simply because retrieval
+returned nothing relevant for a chit-chat message.
+
+Detection heuristic: if the rewritten query is byte-identical to the
+original user message AND the message is short (< 6 words) OR matches
+a small set of conversational patterns (greetings, thanks, formatting
+requests like "shorter", "in English", etc.), treat it as no-search
+intent and skip retrieval.
 
 **Example**:
 
@@ -249,18 +309,77 @@ The prompt has three clear sections:
 {assistant_instructions}
 
 BEHAVIOUR RULES:
-1. CONTEXT IS KING: Respond using ONLY information present in the CONTEXT section or in the conversation HISTORY. Absolutely no external or general knowledge. When the user asks to elaborate, expand, rephrase, or summarise something already covered in the conversation, you may build on what you previously said using the same CONTEXT — this is not "adding new information", it is presenting the same information differently. If neither the CONTEXT nor the HISTORY support the request, apply Rule 2.
-2. STRICT FALLBACK: If the information is not in the context, respond EXACTLY with:
-   "I don't have enough information in my documents to answer this question. What I looked for: [brief summary]. Suggestion: [suggest a different keyword or angle to search]." 
+1. GROUND IN THE CONTEXT: Your answers must be grounded in the CONTEXT
+   section and the conversation HISTORY. You are encouraged to:
+   - Elaborate on concepts present in the CONTEXT with more detail,
+     synonyms, or clearer phrasing.
+   - Generate ILLUSTRATIVE EXAMPLES that apply the concepts in the
+     CONTEXT to new everyday situations. Examples do not need to be
+     verbatim from the documents — what matters is that they correctly
+     apply a concept that IS in the CONTEXT.
+   - Build on what you previously said in the HISTORY when the user
+     asks to expand, reformulate, or summarise.
+   What you must NOT do: introduce factual claims, figures, legal
+   provisions, or domain knowledge that are absent from the CONTEXT.
+   If the user's request requires information genuinely outside the
+   CONTEXT and HISTORY, apply Rule 2.
+2. STRICT FALLBACK: If the information is not in the context, respond
+   EXACTLY with:
+   "I don't have enough information in my documents to answer this
+   question. What I looked for: [brief summary]. Suggestion: [suggest a
+   different keyword or angle to search]."
    Do not use outside knowledge to generate the suggestion.
-3. CITATION FORMAT: You MUST cite sources immediately after the relevant claim, before the period. 
+3. CITATION FORMAT: You MUST cite sources immediately after the
+   relevant claim, before the period.
    - Format strictly as [CITE:chunk_id].
-   - Do NOT combine citations. (WRONG: [CITE:id1, id2]. RIGHT: [CITE:id1][CITE:id2]).
-   - Never hallucinate chunk IDs — only cite IDs actually present in the CONTEXT.
-4. CONTRADICTIONS: If chunks contain conflicting information, objectively state both versions, citing the respective sources for each. Do not attempt to guess which one is correct.
-5. TONE & STYLE: Be concise, direct, and professional. Do not repeat the user's question or use filler introductions.
-6. LANGUAGE: Always respond in the same language as the user's prompt, even if the CONTEXT documents are in a different language.
+   - Do NOT combine citations. (WRONG: [CITE:id1, id2].
+     RIGHT: [CITE:id1][CITE:id2]).
+   - Never hallucinate chunk IDs — only cite IDs actually present in
+     the CONTEXT.
+4. CONTRADICTIONS: If chunks contain conflicting information,
+   objectively state both versions, citing the respective sources for
+   each. Do not attempt to guess which one is correct.
+5. TONE & STYLE: Be concise, direct, and professional. Do not repeat
+   the user's question or use filler introductions.
+6. LANGUAGE: Always respond in the same language as the user's
+   prompt, even if the CONTEXT documents are in a different language.
+7. ELABORATION MODES: When the user asks for more information on
+   something already discussed, identify which mode applies:
+   - EXPAND: user wants more depth on an existing concept → use the
+     same CONTEXT with more detail, unpacking terms, explaining
+     implications.
+   - REPHRASE: user wants the same content said differently →
+     reformulate with synonyms, simpler language, or a different angle.
+   - EXEMPLIFY: user wants more examples → generate new illustrative
+     examples based on the concepts in the CONTEXT.
+   - COMPARE: user wants contrast with something else discussed → use
+     the HISTORY to recall what was said and relate them.
+   In all four modes, Rule 1 still applies: stay grounded, no external
+   facts.
 ```
+
+**Design notes on this prompt** (for future maintainers):
+
+- Rule 1 is deliberately phrased in an affirmative tone ("you are
+  encouraged to…") before stating the limit ("what you must NOT do…").
+  An earlier version led with "ONLY use context" and GPT-4o-mini
+  tended to over-apply the restriction, tipping into Rule 2 even when
+  elaboration was legitimate. Leading with capabilities gives the
+  model permission to act before permission to refuse.
+- Rule 1 explicitly legitimises ILLUSTRATIVE EXAMPLES. Without this,
+  the model treated "give me another example" as a request for new
+  facts and refused. An illustrative example that correctly applies a
+  concept present in CONTEXT is grounded, not fabricated.
+- Rule 7 gives the model a taxonomy of follow-up modes (expand /
+  rephrase / exemplify / compare). This is classic prompt engineering:
+  supplying the model with a menu of allowed actions reduces indecision
+  and increases consistency across turns.
+- Rule 5 used to include "Use Markdown for structure" but that was
+  removed because the frontend does not currently render Markdown,
+  so users were seeing literal asterisks and hashes. If the frontend
+  is updated to render Markdown, add the instruction back.
+- Rule 6 (language) was added after observing the LLM occasionally
+  reply in English when Spanish documents were retrieved.
 
 ### Retrieved context
 
@@ -380,8 +499,8 @@ Everything below lives in `.env` and can be tuned without touching code:
 |-----------------------------|---------|-----------------|
 | `CHUNK_SIZE`                | 800     | 500 – 1200      |
 | `CHUNK_OVERLAP`             | 150     | 80 – 250        |
-| `RETRIEVAL_TOP_K`           | 5       | 3 – 10          |
-| `RETRIEVAL_SCORE_THRESHOLD` | 1.5     | 1.0 – 2.5       |
+| `RETRIEVAL_TOP_K`           | 8       | 3 – 12          |
+| `RETRIEVAL_SCORE_THRESHOLD` | 1.2     | 1.0 – 2.5       |
 | `HISTORY_MAX_MESSAGES`      | 10      | 4 – 20          |
 | `QUERY_REWRITING_ENABLED`   | true    | true / false    |
 | `QUERY_REWRITING_HISTORY_N` | 4       | 2 – 8           |

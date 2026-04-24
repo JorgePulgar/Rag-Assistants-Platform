@@ -366,9 +366,26 @@ logic for no-search intent are already specified in the updated
     know" string AND contains more than a trivial character count
     (e.g., > 100 chars).
   Must produce visible pytest output. ⬅ T047h
-- [x] **T047m** — Follow-up commits and push. Each of T047h–T047l
+- [ ] **T047n** — Automated regression test for the "exemplify" case
+  (Rule 7 EXEMPLIFY mode). In the same test file as T047l, add a
+  test that:
+  - Sets up an assistant with a document explaining some concept with
+    at least one example.
+  - Turn 1: asks about the concept. Verify the assistant answers with
+    the document's example.
+  - Turn 2: asks "can you give me more examples?" (or equivalent
+    Spanish phrasing).
+  - Asserts: the assistant response is NOT the hardcoded "I don't
+    know" string AND contains at least one example distinct from the
+    one given in turn 1 (simple check: different keywords or entities
+    appear).
+  This test guards against regression to the pre-Phase-4.5-followup
+  behaviour where "more examples" triggered the fallback path.
+  Must produce visible pytest output. ⬅ T047h
+- [ ] **T047m** — Follow-up commits and push. Each of T047h–T047n
   gets its own commit per CONSTITUTION §7. This task is just the
   final push and a PROGRESS.md line summarising the follow-up batch.
+
 **Phase 4.5 final checkpoint** (supersedes the previous one): both
 original bugs fixed, all three follow-up issues fixed, prompts in code
 match the spec, regression tests green for elaboration and
