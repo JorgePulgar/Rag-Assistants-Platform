@@ -45,12 +45,14 @@ def _post_process(
 ) -> tuple[str, list[dict[str, Any]]]:
     """Replace [CITE:id] markers with sequential [N] labels; build structured citations."""
     chunk_by_id = {c["chunk_id"]: c for c in chunks}
-    pattern = re.compile(r"\[CITE:([a-f0-9-]+)\]")
+    # IGNORECASE: the LLM occasionally upper-cases the UUID hex digits even though
+    # ingestion always stores them lower-case (str(uuid.uuid4())).
+    pattern = re.compile(r"\[CITE:([a-f0-9-]+)\]", re.IGNORECASE)
 
     cited_ids: list[str] = []
     seen: set[str] = set()
     for match in pattern.finditer(llm_response):
-        cid = match.group(1)
+        cid = match.group(1).lower()
         if cid not in seen and cid in chunk_by_id:
             cited_ids.append(cid)
             seen.add(cid)
@@ -58,7 +60,7 @@ def _post_process(
     content = llm_response
     citations: list[dict[str, Any]] = []
     for i, cid in enumerate(cited_ids, start=1):
-        content = content.replace(f"[CITE:{cid}]", f"[{i}]")
+        content = re.sub(r"\[CITE:" + re.escape(cid) + r"\]", f"[{i}]", content, flags=re.IGNORECASE)
         chunk = chunk_by_id[cid]
         citations.append(
             {

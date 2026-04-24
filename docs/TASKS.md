@@ -342,7 +342,7 @@ logic for no-search intent are already specified in the updated
   apply the warning style only in that case. All other assistant
   messages use the default assistant style from FRONTEND_SPEC
   §"Assistant message".
-- [ ] **T047k** — Citation rendering fix: inline `[CITE:chunk_id]`
+- [x] **T047k** — Citation rendering fix: inline `[CITE:chunk_id]`
   markers sometimes render as literal text instead of being replaced
   by `[1]`, `[2]`, ... clickable pills. Diagnose in the backend
   post-processing function (likely in `services/rag.py`) — inspect

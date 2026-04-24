@@ -204,3 +204,65 @@ def test_long_history_is_trimmed_to_max():
         f"History not trimmed: {history_count} message(s) sent to LLM "
         f"(cap is {settings.history_max_messages})"
     )
+
+
+# ── _post_process citation rendering (T047k) ──────────────────────────────────
+
+def test_post_process_single_citation():
+    """Single [CITE:id] marker is replaced with [1] and a citation object is built."""
+    cid = str(uuid.uuid4())
+    chunk = {
+        "chunk_id": cid,
+        "document_id": str(uuid.uuid4()),
+        "document_name": "doc.pdf",
+        "page": 3,
+        "text": "Relevant excerpt from page 3.",
+    }
+    content, citations = rag._post_process(f"The answer is here [CITE:{cid}].", [chunk])
+
+    assert "[1]" in content
+    assert f"[CITE:{cid}]" not in content
+    assert len(citations) == 1
+    assert citations[0]["document_name"] == "doc.pdf"
+    assert citations[0]["page"] == 3
+
+
+def test_post_process_consecutive_citations():
+    """Two consecutive [CITE:id1][CITE:id2] markers are each replaced with [1] and [2]."""
+    cid1 = str(uuid.uuid4())
+    cid2 = str(uuid.uuid4())
+    chunks = [
+        {"chunk_id": cid1, "document_id": str(uuid.uuid4()), "document_name": "a.pdf", "page": 1, "text": "A"},
+        {"chunk_id": cid2, "document_id": str(uuid.uuid4()), "document_name": "b.pdf", "page": 2, "text": "B"},
+    ]
+    llm_text = f"First claim [CITE:{cid1}][CITE:{cid2}] second claim."
+    content, citations = rag._post_process(llm_text, chunks)
+
+    assert "[1]" in content
+    assert "[2]" in content
+    assert f"[CITE:{cid1}]" not in content
+    assert f"[CITE:{cid2}]" not in content
+    assert len(citations) == 2
+    assert citations[0]["document_name"] == "a.pdf"
+    assert citations[1]["document_name"] == "b.pdf"
+
+
+def test_post_process_citation_at_end_of_sentence():
+    """[CITE:id] at the end of a sentence (before nothing / after period) is replaced."""
+    cid = str(uuid.uuid4())
+    chunk = {"chunk_id": cid, "document_id": str(uuid.uuid4()), "document_name": "c.pdf", "page": 5, "text": "C"}
+    content, citations = rag._post_process(f"The contract terminates after 30 days [CITE:{cid}]", [chunk])
+
+    assert content.endswith("[1]")
+    assert len(citations) == 1
+
+
+def test_post_process_case_insensitive_citation():
+    """[CITE:ID] with uppercase hex is still matched and replaced (LLM may upper-case UUIDs)."""
+    cid_lower = str(uuid.uuid4())
+    cid_upper = cid_lower.upper()
+    chunk = {"chunk_id": cid_lower, "document_id": str(uuid.uuid4()), "document_name": "d.pdf", "page": 1, "text": "D"}
+    content, citations = rag._post_process(f"Answer [CITE:{cid_upper}].", [chunk])
+
+    assert "[1]" in content
+    assert len(citations) == 1
