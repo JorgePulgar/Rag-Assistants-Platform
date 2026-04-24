@@ -366,7 +366,7 @@ logic for no-search intent are already specified in the updated
     know" string AND contains more than a trivial character count
     (e.g., > 100 chars).
   Must produce visible pytest output. ⬅ T047h
-- [ ] **T047m** — Follow-up commits and push. Each of T047h–T047l
+- [x] **T047m** — Follow-up commits and push. Each of T047h–T047l
   gets its own commit per CONSTITUTION §7. This task is just the
   final push and a PROGRESS.md line summarising the follow-up batch.
 **Phase 4.5 final checkpoint** (supersedes the previous one): both
