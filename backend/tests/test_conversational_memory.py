@@ -1,4 +1,4 @@
-"""Tests for conversational memory behaviour (T047e / T033 audit).
+"""Tests for conversational memory behaviour (T047e / T033 audit / T047l).
 
 test_query_rewriting_resolves_referential_followup
     Regression for Bug 2: a referential follow-up ("tell me more about point 2")
@@ -11,6 +11,12 @@ test_conversation_persists_across_sessions
     Regression for T033: messages committed in one SQLAlchemy session are visible
     from a fresh session on the same engine — simulating a backend restart while
     preserving conversation history.
+
+test_elaboration_does_not_return_no_context_response
+    Regression for Rule 1 fix (T047l): asking the assistant to elaborate on a
+    previous answer must not return the hardcoded no-context string.  The pipeline
+    must rewrite the referential query, retrieve relevant chunks, call the LLM, and
+    return a substantive response (> 100 chars).
 """
 import uuid
 from datetime import datetime, timezone
@@ -229,3 +235,71 @@ def test_conversation_persists_across_sessions() -> None:
     assert messages[1].role == "assistant"
     assert messages[1].content == "First answer"
     db2.close()
+
+
+# ── Test 3: elaboration does not return the hardcoded no-context response (T047l) ──
+
+def test_elaboration_does_not_return_no_context_response() -> None:
+    """Regression for Rule 1 fix: asking the assistant to elaborate on a previous
+    answer must not return the hardcoded no-context string.
+
+    Turn 1: question that elicits a structured answer citing document content.
+    Turn 2: referential elaboration request ("can you expand more on that last part?").
+
+    Asserts:
+      - The response does NOT start with the hardcoded empty-retrieval prefix.
+      - The response is substantive (> 100 characters).
+    """
+    db = _make_db()
+    assistant = _assistant(db)
+    conv = _conversation(db, assistant.id)
+
+    chunk = {
+        "chunk_id": str(uuid.uuid4()),
+        "document_id": str(uuid.uuid4()),
+        "document_name": "process_guide.pdf",
+        "page": 2,
+        "text": (
+            "The approval process has three steps: "
+            "(1) Submit request form, (2) Wait for committee review, "
+            "(3) Receive written confirmation within 10 business days."
+        ),
+        "@search.reranker_score": 3.0,
+    }
+
+    # Turn 1: question + structured assistant answer seeded in history.
+    _add_message(db, conv.id, "user", "What are the steps in the approval process?")
+    _add_message(
+        db,
+        conv.id,
+        "assistant",
+        f"The approval process has three steps: (1) Submit request form, "
+        f"(2) Wait for committee review, (3) Receive written confirmation "
+        f"within 10 business days. [CITE:{chunk['chunk_id']}]",
+    )
+
+    # Turn 2: elaboration on the last step.
+    elaboration_query = "can you expand more on that last part?"
+    rewritten_query = (
+        "What happens during step 3 of the approval process — receiving written confirmation?"
+    )
+    elaboration_response = (
+        "The third step — receiving written confirmation — means the committee sends "
+        "an official letter or email within 10 business days of approving your request. "
+        f"The document states this explicitly. [CITE:{chunk['chunk_id']}]"
+    )
+
+    with (
+        patch("app.services.rag.query_rewriter.rewrite_query", return_value=rewritten_query),
+        patch("app.services.rag.retrieve", return_value=[chunk]),
+        patch("app.clients.azure_openai.call_llm", return_value=elaboration_response),
+    ):
+        result = rag.generate_response(db, assistant, conv.id, elaboration_query)
+
+    no_context_prefix = "I did not find relevant information"
+    assert not result["content"].startswith(no_context_prefix), (
+        f"Elaboration triggered the hardcoded no-context response: {result['content']!r}"
+    )
+    assert len(result["content"]) > 100, (
+        f"Elaboration response is too short ({len(result['content'])} chars): {result['content']!r}"
+    )

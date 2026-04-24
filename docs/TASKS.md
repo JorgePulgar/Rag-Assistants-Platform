@@ -353,7 +353,7 @@ logic for no-search intent are already specified in the updated
   (`[CITE:id1][CITE:id2]`), and citation at end of sentence. On the
   frontend side, verify `CitationBlock` correctly renders `[1]`
   pills from the `citations` array. ⬅ T047h
-- [ ] **T047l** — Automated regression test for the elaboration case
+- [x] **T047l** — Automated regression test for the elaboration case
   that was failing (Rule 1 fix). In
   `backend/tests/test_conversational_memory.py` or a new file, add
   a test that:
