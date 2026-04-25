@@ -544,7 +544,7 @@ documents and PPTX content.
      has `is_fallback=true`, and asserts the same after reloading
      via `GET /conversations/{id}/messages`.
   Must produce visible pytest output. ⬅ T056
-- [ ] **T057b** — B9 fix: surface citations even when the LLM omits
+- [x] **T057b** — B9 fix: surface citations even when the LLM omits
   them. With short PPTX-derived chunks the LLM sometimes produces a
   correct, grounded answer but no `[CITE:...]` markers, violating
   Citation Rule 3. We cannot force the LLM to cite retroactively, but

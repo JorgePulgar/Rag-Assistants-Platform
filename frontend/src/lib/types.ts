@@ -33,6 +33,7 @@ export interface Citation {
   document_name: string;
   page: number | null;
   chunk_text: string;
+  implicit?: boolean;
 }
 
 export interface Message {

@@ -1,5 +1,5 @@
 import { AlertCircle } from 'lucide-react';
-import { ContentWithCitations } from '@/components/CitationBlock';
+import { ContentWithCitations, ImplicitCitations } from '@/components/CitationBlock';
 import type { Message } from '@/lib/types';
 
 interface MessageBubbleProps {
@@ -20,7 +20,9 @@ export function MessageBubble({ message, previousRole }: MessageBubbleProps) {
     );
   }
 
-  const citations = message.citations ?? [];
+  const allCitations = message.citations ?? [];
+  const citations = allCitations.filter((c) => !c.implicit);
+  const implicitCitations = allCitations.filter((c) => c.implicit);
   const isIdk = message.is_fallback;
 
   return (
@@ -43,6 +45,7 @@ export function MessageBubble({ message, previousRole }: MessageBubbleProps) {
         <span className="whitespace-pre-wrap">
           <ContentWithCitations content={message.content} citations={citations} />
         </span>
+        <ImplicitCitations citations={implicitCitations} />
       </div>
     </div>
   );

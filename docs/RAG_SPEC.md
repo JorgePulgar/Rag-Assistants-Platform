@@ -444,12 +444,40 @@ The LLM returns text with inline `[CITE:chunk_id]` markers. The backend:
 2. For each, looks up the full object (document_id, document_name, page,
    snippet of 300 chars) from the retrieval result.
 3. Replaces `[CITE:chunk_id]` markers with sequential `[1]`, `[2]`, ...
-4. Returns to the client:
+4. Strips any remaining `[CITE:...]` literals whose chunk_id was not in
+   the retrieved set (hallucinated or stale IDs from prior turns).
+5. Returns to the client:
    - `content`: text with inline `[1]`, `[2]`, ... markers.
-   - `citations`: ordered array of citation objects.
+   - `citations`: ordered array of citation objects, each with an
+     `implicit: bool` field (see below).
 
 The frontend renders each `[n]` as a clickable pill that expands the
 corresponding citation object.
+
+### Implicit citations fallback (B9)
+
+With short PPTX-derived chunks the LLM sometimes produces a correct,
+grounded answer but emits no `[CITE:...]` markers — it treats bullet-point
+fragments as background context rather than citable sources. This silently
+violates Citation Rule 3.
+
+**When it triggers**: after the normal marker extraction, if `chunks` is
+non-empty AND `citations` is still empty (no markers found), the backend:
+
+1. Logs a WARNING with the `assistant_id` and `conversation_id`.
+2. Populates `citations` with the **top-3** retrieved chunks, each marked
+   `implicit: True`.
+
+**When it does NOT trigger**: if `is_fallback` is True (the LLM returned
+a Rule-2 "I don't know" response), citations are cleared to `[]` after
+`_post_process` regardless — implicit citations would be contradictory
+alongside an explicit "I don't have information" message.
+
+**Frontend rendering**: explicit citations (`implicit: False`) render as
+inline `[N]` pills inside the message text. Implicit citations
+(`implicit: True`) render as a muted "Sources consulted: [1] [2] [3]"
+row below the message, visually distinct from cited claims (neutral pill
+style vs. blue accent). Same expandable popover content for both.
 
 ## "I don't know" behaviour
 

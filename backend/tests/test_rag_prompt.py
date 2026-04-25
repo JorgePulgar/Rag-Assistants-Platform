@@ -304,3 +304,74 @@ def test_post_process_unknown_chunk_id_is_stripped(caplog):
 
     # The anomaly is logged
     assert unknown_cid in caplog.text
+
+
+# ── Implicit citations fallback (B9 / T057b) ──────────────────────────────────
+
+def test_post_process_implicit_citations_when_no_markers(caplog):
+    """When the LLM emits no [CITE:...] markers but chunks were retrieved, the
+    top-3 chunks must be surfaced as implicit citations (implicit=True).
+
+    This covers the B9 scenario: PPTX-derived chunks produce correct answers
+    but the LLM treats bullet-point fragments as background, silently omitting
+    all citation markers.
+    """
+    import logging
+
+    chunks = [
+        {"chunk_id": str(uuid.uuid4()), "document_id": str(uuid.uuid4()), "document_name": f"doc{i}.pdf", "page": i, "text": f"Chunk content {i}."}
+        for i in range(1, 5)  # 4 chunks — only top-3 should appear
+    ]
+    llm_response = "A correct and grounded answer with no citation markers at all."
+
+    with caplog.at_level(logging.WARNING, logger="app.services.rag"):
+        content, citations = rag._post_process(llm_response, chunks, "asst-1", "conv-1")
+
+    # Content is unchanged (no markers to replace)
+    assert content == llm_response
+
+    # Exactly 3 implicit citations (capped at 3)
+    assert len(citations) == 3, f"Expected 3 implicit citations, got {len(citations)}"
+    assert all(c["implicit"] is True for c in citations), (
+        f"All citations must be implicit=True: {citations}"
+    )
+    assert citations[0]["document_name"] == "doc1.pdf"
+    assert citations[1]["document_name"] == "doc2.pdf"
+    assert citations[2]["document_name"] == "doc3.pdf"
+
+    # A WARNING was logged with the assistant and conversation IDs
+    assert any(r.levelno == logging.WARNING for r in caplog.records), (
+        "Expected a WARNING log entry for omitted citation markers"
+    )
+    assert "asst-1" in caplog.text
+    assert "conv-1" in caplog.text
+
+
+def test_post_process_no_implicit_when_explicit_citations_exist():
+    """If the LLM cited at least one chunk, no implicit citations are added."""
+    cid = str(uuid.uuid4())
+    chunk = {
+        "chunk_id": cid,
+        "document_id": str(uuid.uuid4()),
+        "document_name": "cited.pdf",
+        "page": 1,
+        "text": "Cited content.",
+    }
+    content, citations = rag._post_process(f"Answer [CITE:{cid}].", [chunk])
+
+    assert len(citations) == 1
+    assert citations[0]["implicit"] is False
+    assert citations[0]["document_name"] == "cited.pdf"
+
+
+def test_post_process_explicit_citations_have_implicit_false():
+    """Explicit citations always carry implicit=False (schema consistency)."""
+    cid1, cid2 = str(uuid.uuid4()), str(uuid.uuid4())
+    chunks = [
+        {"chunk_id": cid1, "document_id": str(uuid.uuid4()), "document_name": "a.pdf", "page": 1, "text": "A"},
+        {"chunk_id": cid2, "document_id": str(uuid.uuid4()), "document_name": "b.pdf", "page": 2, "text": "B"},
+    ]
+    _, citations = rag._post_process(f"Claim [CITE:{cid1}] and [CITE:{cid2}].", chunks)
+
+    assert len(citations) == 2
+    assert all(c["implicit"] is False for c in citations)

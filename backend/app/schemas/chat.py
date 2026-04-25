@@ -8,6 +8,7 @@ class CitationObject(BaseModel):
     document_name: str
     page: int | None
     chunk_text: str
+    implicit: bool = False
 
 
 class ConversationCreate(BaseModel):

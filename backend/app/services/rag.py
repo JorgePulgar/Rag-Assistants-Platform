@@ -68,9 +68,18 @@ def _build_context_block(chunks: list[dict[str, Any]], user_message: str) -> str
 
 
 def _post_process(
-    llm_response: str, chunks: list[dict[str, Any]]
+    llm_response: str,
+    chunks: list[dict[str, Any]],
+    assistant_id: str = "",
+    conversation_id: str = "",
 ) -> tuple[str, list[dict[str, Any]]]:
-    """Replace [CITE:id] markers with sequential [N] labels; build structured citations."""
+    """Replace [CITE:id] markers with sequential [N] labels; build structured citations.
+
+    If the LLM produced a valid answer but emitted no citation markers and chunks
+    were retrieved, the top-3 retrieved chunks are surfaced as implicit sources
+    (implicit=True) so the user retains traceability even when the model forgot
+    to cite (B9 fix, T057b).
+    """
     chunk_by_id = {c["chunk_id"]: c for c in chunks}
     # IGNORECASE: the LLM occasionally upper-cases the UUID hex digits even though
     # ingestion always stores them lower-case (str(uuid.uuid4())).
@@ -106,6 +115,7 @@ def _post_process(
                 "document_name": chunk["document_name"],
                 "page": chunk.get("page"),
                 "chunk_text": chunk["text"][:300],
+                "implicit": False,
             }
         )
 
@@ -114,6 +124,30 @@ def _post_process(
     # copied verbatim). Leaving them as literal text produces "residual" artefacts
     # like "[CITE:12][1]" in the rendered output (T055b).
     content = pattern.sub("", content)
+
+    # Implicit citations fallback (B9 / T057b): the LLM produced a grounded answer
+    # but emitted no [CITE:...] markers — common with PPTX-derived chunks whose
+    # bullet-point style the model treats as background rather than citable sources.
+    # Surface the top-3 retrieved chunks so the user retains traceability.
+    if chunks and not citations:
+        implicit_count = min(3, len(chunks))
+        logger.warning(
+            "LLM omitted all citation markers (assistant=%s conversation=%s) "
+            "— surfacing top %d chunk(s) as implicit sources",
+            assistant_id,
+            conversation_id,
+            implicit_count,
+        )
+        for chunk in chunks[:implicit_count]:
+            citations.append(
+                {
+                    "document_id": chunk["document_id"],
+                    "document_name": chunk["document_name"],
+                    "page": chunk.get("page"),
+                    "chunk_text": chunk["text"][:300],
+                    "implicit": True,
+                }
+            )
 
     return content, citations
 
@@ -200,6 +234,11 @@ def generate_response(
         len(chunks),
     )
     raw_response = azure_openai.call_llm(messages)
-    content, citations = _post_process(raw_response, chunks)
+    content, citations = _post_process(raw_response, chunks, assistant.id, conversation_id)
+    is_fallback = _is_fallback_response(raw_response)
+    if is_fallback:
+        # LLM chose Rule-2 fallback despite having context — implicit citations would
+        # contradict the "I don't know" message, so clear them for consistency.
+        citations = []
 
-    return {"content": content, "citations": citations, "is_fallback": _is_fallback_response(raw_response)}
+    return {"content": content, "citations": citations, "is_fallback": is_fallback}
