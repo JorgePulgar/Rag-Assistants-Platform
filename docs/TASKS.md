@@ -462,7 +462,7 @@ error states.
 - [x] **T054** — Destructive confirmations: "are you sure you want to
   delete this assistant? X documents and Y conversations will be
   deleted". ⬅ T038
-- [ ] **T055** — Visual polish: coherent palette, spacing, typography.
+- [x] **T055** — Visual polish: coherent palette, spacing, typography.
   One global pass, no perfectionism. ⬅ T037
 - [ ] **T055b** — Citation pill rendering fix: residual `[CITE:id]`
   literal text sometimes appears immediately before or after the

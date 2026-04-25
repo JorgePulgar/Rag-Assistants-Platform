@@ -4,12 +4,15 @@ import type { Message } from '@/lib/types';
 
 interface MessageBubbleProps {
   message: Message;
+  previousRole?: string;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, previousRole }: MessageBubbleProps) {
+  const spacingClass = previousRole === message.role ? 'mt-1' : 'mt-6';
+
   if (message.role === 'user') {
     return (
-      <div className="flex justify-end mt-6">
+      <div className={`flex justify-end ${spacingClass}`}>
         <div className="max-w-[70%] px-4 py-2 rounded-2xl rounded-br-md bg-blue-600 text-white text-sm whitespace-pre-wrap">
           {message.content}
         </div>
@@ -28,7 +31,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isIdk = IDK_PREFIXES.some((p) => message.content.startsWith(p));
 
   return (
-    <div className="flex items-start gap-3 mt-6">
+    <div className={`flex items-start gap-3 ${spacingClass}`}>
       <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
         <span className="text-xs font-medium text-white">A</span>
       </div>

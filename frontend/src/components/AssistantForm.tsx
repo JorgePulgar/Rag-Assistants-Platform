@@ -89,10 +89,14 @@ export function AssistantForm({
 
         <div className="space-y-3 py-2">
           <div>
-            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            <label
+              htmlFor="af-name"
+              className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+            >
               Name
             </label>
             <Input
+              id="af-name"
               className="mt-1"
               value={name}
               onChange={e => setName(e.target.value)}
@@ -102,10 +106,14 @@ export function AssistantForm({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            <label
+              htmlFor="af-description"
+              className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+            >
               Description
             </label>
             <Input
+              id="af-description"
               className="mt-1"
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -114,10 +122,14 @@ export function AssistantForm({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            <label
+              htmlFor="af-instructions"
+              className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+            >
               Instructions
             </label>
             <Textarea
+              id="af-instructions"
               className="mt-1 font-mono text-xs min-h-[120px]"
               value={instructions}
               onChange={e => setInstructions(e.target.value)}

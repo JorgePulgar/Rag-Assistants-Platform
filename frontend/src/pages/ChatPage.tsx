@@ -100,7 +100,13 @@ export function ChatPage({ conversationId, conversationTitle, onBack }: ChatPage
               Ask anything about the documents…
             </p>
           ) : (
-            messages.map(msg => <MessageBubble key={msg.id} message={msg} />)
+            messages.map((msg, i) => (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                previousRole={i > 0 ? messages[i - 1].role : undefined}
+              />
+            ))
           )}
           {isThinking && <ThinkingBubble />}
           <div ref={bottomRef} />
