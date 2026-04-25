@@ -483,7 +483,7 @@ error states.
      citation whose chunk_id is NOT in retrieved chunks (should be
      stripped), and consecutive citations (`[CITE:a][CITE:b]`).
   ⬅ T055
-- [ ] **T056** — Commit and push.
+- [x] **T056** — Commit and push.
 
 - [ ] **T048b** — `[BLOCKS ON: Jorge upload]` Real end-to-end runs.
   Until this task, T048 was satisfied only via static code review
