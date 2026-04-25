@@ -572,7 +572,7 @@ documents and PPTX content.
   4. **Spec update**: extend `RAG_SPEC.md` §"Response post-processing"
      to document the implicit-citations fallback.
   Must produce visible pytest output. ⬅ T056
-- [ ] **T057c** — Phase 6.5 final commit and push. Each of T057a and
+- [x] **T057c** — Phase 6.5 final commit and push. Each of T057a and
   T057b had its own commit per CONSTITUTION §7. This task is just the
   final push and a one-line `PROGRESS.md` summary.
 **Phase 6.5 checkpoint**: B8 and B9 fixed, both regression tests
