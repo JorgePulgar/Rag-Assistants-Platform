@@ -366,7 +366,7 @@ logic for no-search intent are already specified in the updated
     know" string AND contains more than a trivial character count
     (e.g., > 100 chars).
   Must produce visible pytest output. ⬅ T047h
-- [ ] **T047n** — Automated regression test for the "exemplify" case
+- [X] **T047n** — Automated regression test for the "exemplify" case
   (Rule 7 EXEMPLIFY mode). In the same test file as T047l, add a
   test that:
   - Sets up an assistant with a document explaining some concept with
@@ -382,7 +382,7 @@ logic for no-search intent are already specified in the updated
   This test guards against regression to the pre-Phase-4.5-followup
   behaviour where "more examples" triggered the fallback path.
   Must produce visible pytest output. ⬅ T047h
-- [ ] **T047m** — Follow-up commits and push. Each of T047h–T047n
+- [X] **T047m** — Follow-up commits and push. Each of T047h–T047n
   gets its own commit per CONSTITUTION §7. This task is just the
   final push and a PROGRESS.md line summarising the follow-up batch.
 
@@ -443,10 +443,10 @@ see citations, start a new conversation, reopen an old one.
 ---
 
 ## Phase 6 — Polish and edge cases
-
+ 
 **Goal**: robust enough to demo, no obvious bugs, no awkward empty or
 error states.
-
+ 
 - [ ] **T048** — Run the full flow three times with real, distinct
   documents. Write every bug found into a short list.
 - [ ] **T049** — Fix the bugs from T048 (open-ended, N sub-bugs).
@@ -464,17 +464,35 @@ error states.
   deleted". ⬅ T038
 - [ ] **T055** — Visual polish: coherent palette, spacing, typography.
   One global pass, no perfectionism. ⬅ T037
+- [ ] **T055b** — Citation pill rendering fix: residual `[CITE:id]`
+  literal text sometimes appears immediately before or after the
+  rendered `[N]` pill (observed example: `[CITE:12][1]` where `[1]`
+  is the correct pill and `[CITE:12]` is leftover literal text).
+  Root cause likely: the regex replacement in the backend
+  post-processing misses some marker variants (whitespace, casing,
+  trailing punctuation, or a chunk_id that was not in the retrieval
+  result). Diagnose in `services/rag.py` `_post_process`:
+  1. Log every `[CITE:...]` marker found in the LLM response vs.
+     every marker successfully replaced — identify which ones are
+     slipping through.
+  2. Cover the gaps: either extend the regex to catch the missed
+     variants, OR strip any remaining `[CITE:...]` literals from the
+     final content after the known-id replacement pass (fallback
+     cleanup).
+  3. Add a unit test with a response containing: a valid citation, a
+     citation whose chunk_id is NOT in retrieved chunks (should be
+     stripped), and consecutive citations (`[CITE:a][CITE:b]`).
+  ⬅ T055
 - [ ] **T056** — Commit and push.
-
 **Phase 6 checkpoint**: a user who has never seen the app can use it
 without asking questions and without getting stuck.
-
+ 
 ---
-
+ 
 ## Phase 7 — Deliverables
-
-**Goal**: README, final diagram, demo video ready for submission.
-
+ 
+**Goal**: README and final diagram ready for submission.
+ 
 - [ ] **T057** — Final `PROGRESS.md`: snapshot of the project state.
 - [ ] **T058** — Review the architecture diagram from T025. If the real
   implementation drifted from the initial draft (new services, renamed
@@ -496,35 +514,98 @@ without asking questions and without getting stuck.
   (e.g. "2024 Tax Expert" with Spanish tax authority guides, "Italian
   Cooking Assistant" with recipe books). Data stays in Spanish; UI is
   in English.
-- [ ] **T062** — Demo video script (5 min max): intro (30s), assistant
-  creation (1min), document upload (45s), chat with each assistant
-  demonstrating isolation and citations (1.5min), conversational memory
-  demo (30s), persistence after reload (45s), wrap-up (30s).
-- [ ] **T063** — Record the video with Spanish narration over the
-  English UI. Tool: OBS or Loom.
-- [ ] **T064** — Upload the video to unlisted YouTube (or Google Drive),
-  review the auto-generated English subtitles, link from the README. ⬅ T063
 - [ ] **T065** — Final commit tagged `v1.0`.
-
-**Phase 7 checkpoint**: all three deliverables (repo, README, video) are
-publishable as-is.
-
+**Phase 7 checkpoint**: repo and README publishable as-is. Demo video
+(recorded separately by Jorge, not tracked as a task) is linked from
+the README when available.
+ 
+> **Note**: the demo video (3–5 min) is a required deliverable per the
+> project brief, but it is recorded and uploaded manually by Jorge
+> outside the task pipeline. It is not T062–T064 anymore — those
+> tasks were removed on decision.
+ 
 ---
-
-## Phase 8 — Buffer (optional)
-
-**Goal**: whatever you have energy and time for. Nothing here is
-required.
-
-- [ ] **T066** — Prioritise by impact: any lingering demo bugs >
-  polish > extra features.
-- [ ] **T067** — Optional extras in order of value: response streaming
-  (SSE), better long-context handling via compaction, export
-  conversation to file, conversation rename.
-- [ ] **T068** — Prepare a short presentation (slides or outline) in
-  case you are picked to present in class. This is not recorded and
-  not submitted — it is a fallback.
-
+ 
+## Phase 8 — Optional extras
+ 
+**Goal**: improvements to ship if there is time and energy. Nothing
+here is required for the academic deliverable. Each task is
+independent and can be tackled in any order. Pick by value vs effort.
+ 
+Effort ratings below are rough: **S** = small (1–2h), **M** = medium
+(3–5h), **L** = large (6+h).
+ 
+- [ ] **T066** — *(S, high user value)* Resizable sidebar. The
+  left sidebar should be user-resizable by dragging its right edge.
+  Constraints: minimum width 200px (so it cannot be collapsed to
+  unusable), maximum width equal to current fixed width (280px per
+  `FRONTEND_SPEC.md`). Persist the chosen width in `localStorage`
+  so it survives reloads. Resize handle visible on hover; use the
+  `cursor: col-resize` style. No change to sidebar content or the
+  rest of the layout.
+- [ ] **T067** — *(M, medium user value)* Document upload
+  feedback:
+  - Progress indicator during upload: for each file being uploaded,
+    show a progress bar or percentage in the document list row.
+    Source the progress from the `onUploadProgress` callback of
+    axios so it reflects the HTTP request, not the server-side
+    parsing.
+  - Server-side processing feedback: after the HTTP upload completes,
+    the document row transitions to a "Processing…" state with a
+    small animated indicator until the backend returns
+    `status=indexed`. Poll the documents list endpoint every 2s
+    until the status changes.
+  - Heavy-file warning: when a user selects a file > 3MB, show an
+    inline note before upload: "Large file — processing may take up
+    to a minute".
+  No backend changes needed if the documents endpoint already
+  returns `status` per document.
+- [ ] **T068** — *(M, high user value)* Conversation management:
+  rename, delete, and export. For each conversation, expose three
+  actions:
+  - **Rename**: inline edit of the conversation title (both in the
+    sidebar/list and from within an open chat). Backend endpoint
+    `PATCH /api/conversations/{id}` with a `title` field.
+  - **Delete**: confirmation dialog reusing the same pattern as
+    T054. Removes the conversation and all its messages.
+  - **Export**: download the conversation as a Markdown file
+    (`conversation-{title}-{date}.md`) containing the assistant
+    name, timestamp, and all messages with roles and citations
+    expanded (document name + page + snippet).
+  All three actions accessible both from the conversation list (as
+  icon + text buttons, same style as the existing "Edit" button on
+  assistants) and from inside an open chat (e.g. in the chat header
+  strip).
+- [ ] **T069** — *(M, medium user value)* Chat tabs in the main
+  area. Replace the single-chat main area with a tabbed interface:
+  - Each open conversation lives in its own tab at the top of the
+    main area (tab bar style similar to VS Code or Chrome).
+  - Clicking an assistant in the sidebar opens (or focuses) its
+    most recent conversation as a tab.
+  - Tabs can be closed individually with an `×` button.
+  - Tab state (which tabs are open, which is active) persists in
+    `localStorage` across reloads.
+  - A new "+" button on the tab bar opens a new conversation for
+    the currently selected assistant.
+  Does NOT include split panels — that is T070.
+- [ ] **T070** — *(L, lower user value)* Split panels with
+  drag-and-drop tabs. Extend T069 so that tabs can be dragged to
+  the edges of the main area to create split panels, VS Code
+  style:
+  - Dragging a tab to the right edge of the main area creates a
+    vertical split; the tab docks as the only tab of the new
+    right panel.
+  - Each resulting panel has its own independent tab bar.
+  - Tabs can be dragged between panels, re-ordered within a panel,
+    or moved back to merge panels (dropping the last tab onto the
+    other panel collapses the split).
+  - Split configuration persists in `localStorage`.
+  - Minimum panel width 300px; smaller than that, the split
+    doesn't form on drag.
+  This is the most complex extra by a wide margin. Recommended
+  libraries: `react-dnd` for drag-and-drop; consider
+  `react-resizable-panels` for the split layout itself rather
+  than hand-rolling it. ⬅ T069
 ---
 
 ## Rules for Claude Code about this file
