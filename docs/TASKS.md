@@ -459,7 +459,7 @@ error states.
   operation. ⬅ T036
 - [x] **T053** — Empty states: "no assistants yet", "no documents on
   this assistant", "start a conversation". ⬅ T037
-- [ ] **T054** — Destructive confirmations: "are you sure you want to
+- [x] **T054** — Destructive confirmations: "are you sure you want to
   delete this assistant? X documents and Y conversations will be
   deleted". ⬅ T038
 - [ ] **T055** — Visual polish: coherent palette, spacing, typography.

@@ -148,6 +148,7 @@ export function AssistantDetailPage({
   }
 
   const docCountLabel = documents.length === 1 ? '1 document' : `${documents.length} documents`;
+  const convoCountLabel = conversations.length === 1 ? '1 conversation' : `${conversations.length} conversations`;
 
   return (
     <div className="max-w-[1024px] mx-auto px-8 py-6 space-y-8">
@@ -309,7 +310,7 @@ export function AssistantDetailPage({
           <DialogHeader>
             <DialogTitle>Delete assistant?</DialogTitle>
             <DialogDescription>
-              This will delete {docCountLabel} and all conversations. This cannot be undone.
+              This will delete {docCountLabel} and {convoCountLabel}. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
