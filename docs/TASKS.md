@@ -485,7 +485,7 @@ error states.
   ⬅ T055
 - [x] **T056** — Commit and push.
 
-- [ ] **T048b** — `[BLOCKS ON: Jorge upload]` Real end-to-end runs.
+- [x] **T048b** — `[BLOCKS ON: Jorge upload]` Real end-to-end runs.
   Until this task, T048 was satisfied only via static code review
   (commit `4c8b11c`). Now that the code is in a polished state, run
   the full flow manually with real content:
