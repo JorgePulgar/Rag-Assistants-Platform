@@ -69,6 +69,7 @@ export function AssistantDetailPage({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const [isCreatingConvo, setIsCreatingConvo] = useState(false);
 
   const loadDocuments = useCallback(async () => {
     setIsLoadingDocs(true);
@@ -134,12 +135,15 @@ export function AssistantDetailPage({
   }
 
   async function handleStartNewConversation() {
+    setIsCreatingConvo(true);
     try {
       const convo = await conversationsApi.create(assistant.id);
       setConversations(prev => [convo, ...prev]);
       onOpenChat(convo.id, convo.title);
     } catch {
       toast.error('Failed to create conversation');
+    } finally {
+      setIsCreatingConvo(false);
     }
   }
 
@@ -246,9 +250,17 @@ export function AssistantDetailPage({
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
             Conversations
           </h2>
-          <Button size="sm" onClick={() => void handleStartNewConversation()}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
-            Start new conversation
+          <Button
+            size="sm"
+            onClick={() => void handleStartNewConversation()}
+            disabled={isCreatingConvo}
+          >
+            {isCreatingConvo ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+            )}
+            {isCreatingConvo ? 'Creating…' : 'Start new conversation'}
           </Button>
         </div>
 

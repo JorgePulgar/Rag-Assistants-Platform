@@ -455,7 +455,7 @@ error states.
   never a 500. ⬅ T018
 - [x] **T051** — Chat edge cases: conversation with a deleted assistant,
   empty message, very long message. ⬅ T029
-- [ ] **T052** — Loading states in the frontend for every async
+- [x] **T052** — Loading states in the frontend for every async
   operation. ⬅ T036
 - [ ] **T053** — Empty states: "no assistants yet", "no documents on
   this assistant", "start a conversation". ⬅ T037
