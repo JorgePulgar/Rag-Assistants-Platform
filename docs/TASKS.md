@@ -447,7 +447,7 @@ see citations, start a new conversation, reopen an old one.
 **Goal**: robust enough to demo, no obvious bugs, no awkward empty or
 error states.
  
-- [ ] **T048** — Run the full flow three times with real, distinct
+- [x] **T048** — Run the full flow three times with real, distinct
   documents. Write every bug found into a short list.
 - [ ] **T049** — Fix the bugs from T048 (open-ended, N sub-bugs).
 - [ ] **T050** — Ingestion edge cases: corrupt PDF, empty file,
