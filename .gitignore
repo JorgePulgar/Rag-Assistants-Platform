@@ -50,4 +50,9 @@ tmp/
 
 # Private test guides
 TEST_GUIDE.md
-backend/test_documents/ 
+backend/test_documents/
+backend/tests/test_documents/
+
+# Transient screenshots and Claude Code local settings
+image.png
+docs/.claude/

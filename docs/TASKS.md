@@ -606,7 +606,7 @@ fallback responses (any language) and implicit citations correctly.
   (e.g. "2024 Tax Expert" with Spanish tax authority guides, "Italian
   Cooking Assistant" with recipe books). Data stays in Spanish; UI is
   in English.
-- [ ] **T065** — Final commit tagged `v1.0`.
+- [x] **T065** — Final commit tagged `v1.0`.
 **Phase 7 checkpoint**: repo and README publishable as-is. Demo video
 (recorded separately by Jorge, not tracked as a task) is linked from
 the README when available.
