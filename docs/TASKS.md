@@ -589,7 +589,7 @@ fallback responses (any language) and implicit citations correctly.
 - [x] **T058** — Review the architecture diagram from T025. If the real
   implementation drifted from the initial draft (new services, renamed
   endpoints, added flows), update the diagram. Re-export PNG. ⬅ T025
-- [ ] **T059** — Write the complete English `README.md`:
+- [x] **T059** — Write the complete English `README.md`:
   - Product description
   - Technology stack
   - Architecture (embed T058 image)
