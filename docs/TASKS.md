@@ -453,7 +453,7 @@ error states.
 - [x] **T050** — Ingestion edge cases: corrupt PDF, empty file,
   unsupported format, file > 10MB. Each case must return a clean error,
   never a 500. ⬅ T018
-- [ ] **T051** — Chat edge cases: conversation with a deleted assistant,
+- [x] **T051** — Chat edge cases: conversation with a deleted assistant,
   empty message, very long message. ⬅ T029
 - [ ] **T052** — Loading states in the frontend for every async
   operation. ⬅ T036

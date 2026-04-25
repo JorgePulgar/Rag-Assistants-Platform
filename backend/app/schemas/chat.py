@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CitationObject(BaseModel):
@@ -25,7 +25,7 @@ class ConversationRead(BaseModel):
 
 
 class MessageCreate(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=20_000)
 
 
 class MessageRead(BaseModel):
