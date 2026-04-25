@@ -266,3 +266,41 @@ def test_post_process_case_insensitive_citation():
 
     assert "[1]" in content
     assert len(citations) == 1
+
+
+def test_post_process_unknown_chunk_id_is_stripped(caplog):
+    """[CITE:id] whose chunk_id is not in the retrieved set must be stripped, not left literal.
+
+    Residual artefacts like "[CITE:12][1]" occur when the LLM references an ID
+    from a prior turn that is no longer in the current retrieval result (T055b).
+    """
+    import logging
+
+    known_cid = str(uuid.uuid4())
+    unknown_cid = str(uuid.uuid4())
+    chunk = {
+        "chunk_id": known_cid,
+        "document_id": str(uuid.uuid4()),
+        "document_name": "e.pdf",
+        "page": 2,
+        "text": "Known content.",
+    }
+    llm_text = f"Valid claim [CITE:{known_cid}] and hallucinated [CITE:{unknown_cid}]."
+
+    with caplog.at_level(logging.INFO, logger="app.services.rag"):
+        content, citations = rag._post_process(llm_text, [chunk])
+
+    # Known citation is replaced with [1]
+    assert "[1]" in content
+    assert f"[CITE:{known_cid}]" not in content
+
+    # Unknown citation is stripped entirely — no literal [CITE:...] text remains
+    assert f"[CITE:{unknown_cid}]" not in content
+    assert "[CITE:" not in content
+
+    # Exactly one citation object is built
+    assert len(citations) == 1
+    assert citations[0]["document_name"] == "e.pdf"
+
+    # The anomaly is logged
+    assert unknown_cid in caplog.text

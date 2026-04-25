@@ -68,11 +68,22 @@ def _post_process(
 
     cited_ids: list[str] = []
     seen: set[str] = set()
+    unknown_ids: list[str] = []
     for match in pattern.finditer(llm_response):
         cid = match.group(1).lower()
-        if cid not in seen and cid in chunk_by_id:
-            cited_ids.append(cid)
-            seen.add(cid)
+        if cid in chunk_by_id:
+            if cid not in seen:
+                cited_ids.append(cid)
+                seen.add(cid)
+        else:
+            unknown_ids.append(cid)
+
+    if unknown_ids:
+        logger.info(
+            "_post_process: %d unresolved [CITE:...] marker(s) will be stripped: %s",
+            len(unknown_ids),
+            unknown_ids,
+        )
 
     content = llm_response
     citations: list[dict[str, Any]] = []
@@ -87,6 +98,12 @@ def _post_process(
                 "chunk_text": chunk["text"][:300],
             }
         )
+
+    # Fallback: strip any remaining [CITE:...] markers whose chunk_id was not in
+    # the retrieved set (hallucinated IDs or IDs from a prior turn that the LLM
+    # copied verbatim). Leaving them as literal text produces "residual" artefacts
+    # like "[CITE:12][1]" in the rendered output (T055b).
+    content = pattern.sub("", content)
 
     return content, citations
 

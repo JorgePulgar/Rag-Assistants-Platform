@@ -464,7 +464,7 @@ error states.
   deleted". ⬅ T038
 - [x] **T055** — Visual polish: coherent palette, spacing, typography.
   One global pass, no perfectionism. ⬅ T037
-- [ ] **T055b** — Citation pill rendering fix: residual `[CITE:id]`
+- [x] **T055b** — Citation pill rendering fix: residual `[CITE:id]`
   literal text sometimes appears immediately before or after the
   rendered `[N]` pill (observed example: `[CITE:12][1]` where `[1]`
   is the correct pill and `[CITE:12]` is leftover literal text).
