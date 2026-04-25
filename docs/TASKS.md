@@ -585,7 +585,7 @@ fallback responses (any language) and implicit citations correctly.
  
 **Goal**: README and final diagram ready for submission.
  
-- [ ] **T057** — Final `PROGRESS.md`: snapshot of the project state.
+- [x] **T057** — Final `PROGRESS.md`: snapshot of the project state.
 - [ ] **T058** — Review the architecture diagram from T025. If the real
   implementation drifted from the initial draft (new services, renamed
   endpoints, added flows), update the diagram. Re-export PNG. ⬅ T025
