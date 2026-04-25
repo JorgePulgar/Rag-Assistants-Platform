@@ -457,7 +457,7 @@ error states.
   empty message, very long message. ⬅ T029
 - [x] **T052** — Loading states in the frontend for every async
   operation. ⬅ T036
-- [ ] **T053** — Empty states: "no assistants yet", "no documents on
+- [x] **T053** — Empty states: "no assistants yet", "no documents on
   this assistant", "start a conversation". ⬅ T037
 - [ ] **T054** — Destructive confirmations: "are you sure you want to
   delete this assistant? X documents and Y conversations will be
