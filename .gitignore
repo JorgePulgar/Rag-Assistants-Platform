@@ -47,3 +47,7 @@ Thumbs.db
 # Temporary uploads
 uploads/
 tmp/
+
+# Private test guides
+TEST_GUIDE.md
+backend/test_documents/ 
