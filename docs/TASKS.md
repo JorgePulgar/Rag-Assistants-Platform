@@ -450,7 +450,7 @@ error states.
 - [x] **T048** — Run the full flow three times with real, distinct
   documents. Write every bug found into a short list.
 - [x] **T049** — Fix the bugs from T048 (open-ended, N sub-bugs).
-- [ ] **T050** — Ingestion edge cases: corrupt PDF, empty file,
+- [x] **T050** — Ingestion edge cases: corrupt PDF, empty file,
   unsupported format, file > 10MB. Each case must return a clean error,
   never a 500. ⬅ T018
 - [ ] **T051** — Chat edge cases: conversation with a deleted assistant,

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -16,6 +16,8 @@ from app.services import document_service, ingestion
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/assistants", tags=["documents"])
+
+_MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 @router.post(
@@ -30,6 +32,15 @@ async def upload_document(
 ) -> DocumentRead:
     content = await file.read()
     filename = file.filename or "upload"
+
+    if len(content) > _MAX_FILE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum allowed size is {_MAX_FILE_BYTES // (1024 * 1024)} MB.",
+        )
+
+    if len(content) == 0:
+        raise HTTPException(status_code=422, detail="Uploaded file is empty.")
 
     doc_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
