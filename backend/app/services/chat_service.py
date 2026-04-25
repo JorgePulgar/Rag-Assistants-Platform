@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -99,13 +99,16 @@ def send_message(db: Session, conversation_id: str, data: MessageCreate) -> Send
     )
     db.add(user_msg)
 
+    # 1 ms offset guarantees assistant message sorts after user message when
+    # created_at values are compared — both are captured in the same Python
+    # call stack so their wall-clock timestamps would otherwise be identical.
     assistant_msg = Message(
         id=str(uuid.uuid4()),
         conversation_id=conversation_id,
         role="assistant",
         content=result["content"],
         citations=result["citations"],
-        created_at=now,
+        created_at=now + timedelta(milliseconds=1),
     )
     db.add(assistant_msg)
 
