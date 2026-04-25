@@ -83,7 +83,23 @@ Load them when the task requires them. Do not load them preemptively.
   write an automated test. This rule exists because T032 was
   previously marked `[x]` without a real test and hid Bug 2 for a
   full phase.
-
+- **Human-dependent tasks must pause, not pivot.** When a task
+  requires Jorge to perform a manual action (upload real documents,
+  configure something in the Azure portal, provide credentials,
+  click through a browser flow that no test framework can simulate,
+  etc.), do NOT mark the task `[x]` and do NOT silently substitute
+  it with an "equivalent" task you invented. Instead: stop, summarise
+  in plain language what you need from Jorge, and wait for his
+  go-ahead. If the task can be partially advanced without the human
+  action (e.g., a code-review pass that complements a manual run),
+  that partial work is fine to do — but it does NOT close the
+  original task. It either lives as a separate task, or as a note
+  on the original task that the manual portion is pending. This
+  rule exists because T048 was marked `[x]` after a static code
+  review when the task description required real document uploads —
+  the code review was useful but it was not what the task asked
+  for.
+  
 ### RAG core rules
 
 These are the critical spots of the project. Work with extra care:

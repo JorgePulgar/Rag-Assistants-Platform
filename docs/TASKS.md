@@ -484,6 +484,24 @@ error states.
      stripped), and consecutive citations (`[CITE:a][CITE:b]`).
   ⬅ T055
 - [ ] **T056** — Commit and push.
+
+- [ ] **T048b** — `[BLOCKS ON: Jorge upload]` Real end-to-end runs.
+  Until this task, T048 was satisfied only via static code review
+  (commit `4c8b11c`). Now that the code is in a polished state, run
+  the full flow manually with real content:
+  1. Jorge uploads 2–3 real PDF/DOCX/PPTX documents to at least
+     two assistants.
+  2. Run the full flow three times: create assistants, upload docs,
+     start conversations, ask questions, follow-ups, switch
+     assistants, reload the browser, etc.
+  3. Append every newly found bug to `docs/bugs_t048.md` as B8, B9,
+     B10, ... — with the same format as B1–B7 (description, where,
+     impact, fix proposal).
+  4. Mark `[x]` only after Jorge explicitly confirms the runs
+     happened. Do NOT auto-mark from a code review.
+  Bugs found here trigger follow-up fix tasks (T048b1, T048b2, ...)
+  if needed. ⬅ T056
+  
 **Phase 6 checkpoint**: a user who has never seen the app can use it
 without asking questions and without getting stuck.
  
