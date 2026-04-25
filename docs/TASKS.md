@@ -516,7 +516,7 @@ documents and PPTX content.
  
 **Phase 6.5 blocks Phase 7 — do NOT start Phase 7 until 6.5 is done.**
  
-- [ ] **T057a** — B8 fix: language-independent "I don't know" detection.
+- [x] **T057a** — B8 fix: language-independent "I don't know" detection.
   The amber warning style (`AlertCircle` icon + neutral-600 text per
   `FRONTEND_SPEC.md` §"I don't know state") currently relies on
   frontend prefix matching against English strings only. When the LLM

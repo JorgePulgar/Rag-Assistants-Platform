@@ -44,6 +44,16 @@ _NO_CONTEXT_RESPONSE = (
     "Suggestion: rephrase the question or upload related documents to this assistant."
 )
 
+# Stable substrings that appear in the LLM's Rule-2 STRICT FALLBACK response.
+# "What I looked for:" (English) and "Lo que busqué:" (Spanish) are both templated
+# into the system prompt and survive language translation because Rule 6 only changes
+# the surrounding prose, not the structural labels.
+_FALLBACK_MARKERS = ("What I looked for:", "Lo que busqué:")
+
+
+def _is_fallback_response(content: str) -> bool:
+    return any(marker in content for marker in _FALLBACK_MARKERS)
+
 
 def _build_context_block(chunks: list[dict[str, Any]], user_message: str) -> str:
     lines: list[str] = ["RETRIEVED CONTEXT:\n"]
@@ -163,7 +173,7 @@ def generate_response(
             no_search_messages.append({"role": msg.role, "content": msg.content})
         no_search_messages.append({"role": "user", "content": user_message_content})
         raw_response = azure_openai.call_llm(no_search_messages)
-        return {"content": raw_response, "citations": []}
+        return {"content": raw_response, "citations": [], "is_fallback": False}
 
     chunks = retrieve(assistant.search_index, search_query)
 
@@ -172,7 +182,7 @@ def generate_response(
             "No chunks above threshold for conversation %s — returning hardcoded no-context response",
             conversation_id,
         )
-        return {"content": _NO_CONTEXT_RESPONSE, "citations": []}
+        return {"content": _NO_CONTEXT_RESPONSE, "citations": [], "is_fallback": True}
 
     system_prompt = assistant.instructions + _BEHAVIOUR_RULES
     messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
@@ -192,4 +202,4 @@ def generate_response(
     raw_response = azure_openai.call_llm(messages)
     content, citations = _post_process(raw_response, chunks)
 
-    return {"content": content, "citations": citations}
+    return {"content": content, "citations": citations, "is_fallback": _is_fallback_response(raw_response)}

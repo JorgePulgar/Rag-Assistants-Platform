@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -17,6 +17,7 @@ class Message(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" | "assistant"
     content: Mapped[str] = mapped_column(Text, nullable=False)
     citations: Mapped[Any] = mapped_column(JSON, nullable=True)  # list[CitationObject] | None
+    is_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0", default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     conversation: Mapped["Conversation"] = relationship(  # type: ignore[name-defined]

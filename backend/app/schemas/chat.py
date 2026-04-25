@@ -36,6 +36,7 @@ class MessageRead(BaseModel):
     role: str
     content: str
     citations: list[CitationObject] | None
+    is_fallback: bool = False
     created_at: datetime
 
 

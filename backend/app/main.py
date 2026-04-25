@@ -11,7 +11,7 @@ from app.api.assistants import router as assistants_router
 from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
 from app.config import settings
-from app.db import create_all_tables
+from app.db import apply_column_migrations, create_all_tables
 from app.exceptions import AssistantNotFoundError, ConversationNotFoundError, DocumentNotFoundError
 
 logging.basicConfig(
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting up — creating database tables if needed")
     create_all_tables()
+    apply_column_migrations()
     yield
     logger.info("Shutting down")
 

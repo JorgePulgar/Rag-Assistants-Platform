@@ -108,6 +108,7 @@ def send_message(db: Session, conversation_id: str, data: MessageCreate) -> Send
         role="assistant",
         content=result["content"],
         citations=result["citations"],
+        is_fallback=result.get("is_fallback", False),
         created_at=now + timedelta(milliseconds=1),
     )
     db.add(assistant_msg)

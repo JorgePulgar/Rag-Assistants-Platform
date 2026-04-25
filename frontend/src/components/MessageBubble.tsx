@@ -21,14 +21,7 @@ export function MessageBubble({ message, previousRole }: MessageBubbleProps) {
   }
 
   const citations = message.citations ?? [];
-
-  // Warning style applies only to the two known "I don't know" response prefixes:
-  // the hardcoded empty-retrieval message and the LLM's Rule-2 fallback.
-  const IDK_PREFIXES = [
-    "I did not find relevant information in this assistant's documents to answer your question.",
-    "I don't have enough information in my documents to answer this question.",
-  ];
-  const isIdk = IDK_PREFIXES.some((p) => message.content.startsWith(p));
+  const isIdk = message.is_fallback;
 
   return (
     <div className={`flex items-start gap-3 ${spacingClass}`}>

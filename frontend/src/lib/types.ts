@@ -41,5 +41,6 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   citations: Citation[] | null;
+  is_fallback: boolean;
   created_at: string;
 }
