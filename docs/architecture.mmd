@@ -8,7 +8,7 @@ flowchart LR
     subgraph BE["Backend  ·  FastAPI  ·  :8000"]
         direction TB
         ROUTERS["Routers\nassistants · documents · chat"]
-        SERVICES["Services\ningestion · retrieval · rag"]
+        SERVICES["Services\ningestion · retrieval · rag · query_rewriter"]
     end
 
     DB[("SQLite\nassistants · documents\nconversations · messages")]
@@ -32,10 +32,11 @@ flowchart LR
     ROUTERS -->|"② load assistant + history"| DB
     ROUTERS -->|"③ persist user message"| DB
     ROUTERS -->|"→ generate_response"| SERVICES
-    SERVICES -->|"④ embed query"| EMB
+    SERVICES -->|"③b rewrite query\n(LLM call, skipped on no-search intent)"| LLM
+    SERVICES -->|"④ embed rewritten query"| EMB
     EMB -->|"query vector"| SRCH
     SRCH -->|"top-k chunks  hybrid · semantic rerank"| SERVICES
     SERVICES -->|"⑤ build prompt  ·  ⑥ call LLM"| LLM
     LLM -->|"⑦ response + [CITE:id]"| SERVICES
-    SERVICES -->|"⑧ persist assistant message"| DB
+    SERVICES -->|"⑧ persist assistant message\n(is_fallback + implicit citations)"| DB
     ROUTERS -->|"↩ message + citations"| UI
