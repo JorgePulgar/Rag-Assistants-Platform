@@ -507,6 +507,80 @@ without asking questions and without getting stuck.
  
 ---
  
+## Phase 6.5 — Real-content fixes
+ 
+**Goal**: fix two bugs (B8, B9) discovered during the T048b real-content
+end-to-end run that did not exist in the static code review of T048.
+Both surfaced only when running the full RAG flow with real Spanish
+documents and PPTX content.
+ 
+**Phase 6.5 blocks Phase 7 — do NOT start Phase 7 until 6.5 is done.**
+ 
+- [ ] **T057a** — B8 fix: language-independent "I don't know" detection.
+  The amber warning style (`AlertCircle` icon + neutral-600 text per
+  `FRONTEND_SPEC.md` §"I don't know state") currently relies on
+  frontend prefix matching against English strings only. When the LLM
+  follows Rule 6 and returns the Rule-2 fallback in Spanish, the
+  warning style is not applied.
+  
+  Implementation:
+  1. **Backend**: add a boolean `is_fallback` field to
+     `MessageRead` and `SendMessageResponse` schemas. Set `True` when
+     `_NO_CONTEXT_RESPONSE` is returned (no LLM call) OR when the LLM
+     was called but produced an output that opens with the Rule-2
+     fallback pattern (detect via a stable substring like "What I
+     looked for" / "Lo que busqué" — language-agnostic enough to
+     catch both, and any future translations should preserve a
+     similar marker).
+  2. **Backend persistence**: also store `is_fallback` on the
+     `Message` model so reloaded conversations keep the styling.
+     Migration handled by SQLAlchemy `create_all` since SQLite has
+     no live migrations here.
+  3. **Frontend**: in `MessageBubble.tsx`, replace the `IDK_PREFIXES`
+     string-matching logic with a check on `message.is_fallback`.
+     Remove `IDK_PREFIXES`.
+  4. **Test**: add a backend test that sends a Spanish question
+     to an assistant with no relevant chunks, asserts the response
+     has `is_fallback=true`, and asserts the same after reloading
+     via `GET /conversations/{id}/messages`.
+  Must produce visible pytest output. ⬅ T056
+- [ ] **T057b** — B9 fix: surface citations even when the LLM omits
+  them. With short PPTX-derived chunks the LLM sometimes produces a
+  correct, grounded answer but no `[CITE:...]` markers, violating
+  Citation Rule 3. We cannot force the LLM to cite retroactively, but
+  we can surface the sources that fed the response so the user keeps
+  the trace.
+  
+  Implementation:
+  1. **Backend**: in `services/rag.py` `_post_process`, after the
+     normal citation extraction, if `chunks` is non-empty AND
+     `citations` came back empty, log a WARNING with the
+     `assistant_id` and `conversation_id`, AND populate `citations`
+     with the top retrieved chunks marked as "implicit sources"
+     (add a boolean field `implicit: bool` to each citation object;
+     `False` for normal citations, `True` for these synthetic ones).
+     Limit to the top 3 chunks to avoid noise.
+  2. **Frontend**: render implicit citations differently from explicit
+     ones — same expandable popover content, but the pill is grouped
+     under a small label below the message ("Sources consulted:" /
+     similar) instead of inline `[N]` markers. Use a slightly muted
+     style (e.g. `text-neutral-500` instead of the blue accent) to
+     distinguish them from cited claims.
+  3. **Test**: backend test with a mocked LLM response that returns
+     no `[CITE:...]` markers; assert the response has
+     `citations.length > 0` and every citation has `implicit=true`.
+  4. **Spec update**: extend `RAG_SPEC.md` §"Response post-processing"
+     to document the implicit-citations fallback.
+  Must produce visible pytest output. ⬅ T056
+- [ ] **T057c** — Phase 6.5 final commit and push. Each of T057a and
+  T057b had its own commit per CONSTITUTION §7. This task is just the
+  final push and a one-line `PROGRESS.md` summary.
+**Phase 6.5 checkpoint**: B8 and B9 fixed, both regression tests
+green, RAG_SPEC updated for implicit citations, frontend styles both
+fallback responses (any language) and implicit citations correctly.
+ 
+---
+ 
 ## Phase 7 — Deliverables
  
 **Goal**: README and final diagram ready for submission.
