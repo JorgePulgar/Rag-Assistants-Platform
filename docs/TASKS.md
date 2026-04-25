@@ -600,7 +600,7 @@ fallback responses (any language) and implicit citations correctly.
   - Known limitations (including: no cross-conversation memory, no
     authentication, no OCR, etc.)
   ⬅ T058
-- [ ] **T060** — Write the Spanish courtesy `README.es.md`: shorter,
+- [x] **T060** — Write the Spanish courtesy `README.es.md`: shorter,
   links back to the English README for technical depth. ⬅ T059
 - [ ] **T061** — Prepare two demo assistants with 2–3 documents each
   (e.g. "2024 Tax Expert" with Spanish tax authority guides, "Italian
