@@ -1,5 +1,43 @@
 # RAG Assistants Platform
 
+A full-stack Retrieval-Augmented Generation (RAG) platform for building isolated AI assistants grounded in private documents, with persistent memory and verifiable citations.
+
+## TL;DR
+
+- Multi-assistant **RAG platform** with strict data isolation (**1 vector index per assistant**)
+- Built with **Azure AI Foundry + Azure AI Search + FastAPI + React**
+- Supports **conversational memory**, **query rewriting**, and **structured citations**
+- Designed to **minimize hallucinations** via retrieval-first architecture and hard fallback logic
+- Self-hostable: documents stay within the organisation’s Azure environment
+
+## Key Features
+
+- **Hard isolation**: one Azure AI Search index per assistant (no cross-contamination)
+- **Conversational RAG**: follow-up questions handled via LLM query rewriting
+- **Grounded answers**: every response includes verifiable document citations
+- **Hallucination-safe fallback**: no LLM call when retrieval fails
+- **Persistent memory**: conversations stored in SQLite and fully recoverable
+
+## Table of Contents
+
+- [Proyect summary](#Proyect-summary)
+- [What it does](#what-it-does)
+- [Why this matters](#why-this-matters)
+- [Screenshots & Demo](#screenshots--demo)
+- [Stats](#stats)
+- [Architecture](#architecture)
+- [Technology stack](#technology-stack)
+- [Key design decisions](#key-design-decisions)
+- [Local setup](#local-setup)
+- [How the core guarantees are met](#how-the-core-guarantees-are-met)
+- [Known limitations](#known-limitations)
+- [Development process & lessons learned](#development-process--lessons-learned)
+- [Project structure](#project-structure)
+- [Technical documentation](#technical-documentation)
+---
+
+## Proyect summary
+
 A full-stack Retrieval-Augmented Generation (RAG) platform that lets you create multiple isolated AI assistants, each grounded in its own document set, with persistent conversational memory and structured citations.
 
 A focused, production-grade build delivered in 7 days on top of **Azure AI Foundry** and **Azure AI Search**, with a **FastAPI** backend and a **React** frontend.
@@ -54,6 +92,9 @@ It is not a federated search across every company SaaS — only documents explic
 
 What it *is* is a solid technical foundation for vertical products built on top of it — the same primitives, specialised for a domain.
 
+
+[↑ Back to top](#table-of-contents)
+
 ---
 
 ## Screenshots & Demo
@@ -101,6 +142,8 @@ A third turn ("Muchas gracias. Puedes también ponerme más ejemplos") triggers 
 Clicking a `[1]` pill opens a popover showing the structured citation: source document name (`BOE-IMPUESTO-SOBRE-EL-VALOR-AÑADIDO-...pdf`), page number, and the exact chunk text retrieved from the Azure AI Search index. The chunk text is displayed verbatim — no LLM rewriting — so the user can verify the answer against the source.
 
 **Try it yourself** — clone the repo, drop in your Azure credentials, and have your own grounded assistant running locally in under five minutes.
+
+[↑ Back to top](#table-of-contents)
 
 ---
 
@@ -188,6 +231,8 @@ flowchart LR
 9. **Post-processing**: `[CITE:id]` markers are replaced by `[1]`, `[2]` labels; each is resolved to a structured citation object. If the LLM forgot to cite despite having context, the top-3 retrieved chunks are surfaced as implicit sources (`implicit: true`).
 10. Assistant message (with citations and `is_fallback` flag) is persisted and returned to the frontend.
 
+[↑ Back to top](#table-of-contents)
+
 ---
 
 ## Technology stack
@@ -211,6 +256,8 @@ flowchart LR
 - **lucide-react** — icons.
 - **axios** — HTTP client.
 - **next-themes** — dark/light mode with `localStorage` persistence.
+
+[↑ Back to top](#table-of-contents)
 
 ---
 
@@ -267,6 +314,8 @@ Azure AI Search is queried with keyword search (Spanish `es.microsoft` analyzer)
 **Why**: keyword search catches exact term matches that vector search misses (e.g., article numbers, proper nouns). Vector search catches semantic paraphrases that keyword misses. Semantic reranking as a final pass selects the most relevant subset. The combination is substantially better than any single method for Spanish legal and technical documents.
 
 *Source*: `RAG_SPEC.md` §"Retrieval", `clients/azure_search.py`.
+
+[↑ Back to top](#table-of-contents)
 
 ---
 
@@ -354,6 +403,8 @@ pytest -v
 
 56 unit tests cover parsers, RAG prompt construction, index isolation, conversational memory, citation post-processing, and API edge cases. Integration tests (`test_isolation.py`) hit real Azure resources and require a populated `.env`.
 
+[↑ Back to top](#table-of-contents)
+
 ---
 
 ## How the core guarantees are met
@@ -392,6 +443,8 @@ Two paths trigger this:
 2. **Post-LLM (LLM-side fallback)**: the LLM follows Rule 2 of its system prompt and returns the structured fallback template. Detected by a stable substring marker; `is_fallback=True`.
 
 In both cases, `citations=[]` and the frontend applies an amber warning style to the message bubble.
+
+[↑ Back to top](#table-of-contents)
 
 ---
 
@@ -453,6 +506,8 @@ Constitutional principle #3 was that empty retrieval should never reach the LLM 
 
 **What I'd evaluate today.** A version where the LLM handles even the empty-retrieval case, but with a much stricter system prompt: *"if CONTEXT is empty, acknowledge the limitation in natural language; if the user was being conversational, just respond conversationally without mentioning documents"*. This would unify behaviour under a single source of truth (the prompt) and remove the special-case branch in the backend, at the cost of one extra `gpt-4o-mini` call on the empty path and a small residual hallucination risk that the prompt mitigates. For a one-week MVP where the priority was provable safety, the original choice was right. For a longer-running product, the tradeoff flips.
 
+[↑ Back to top](#table-of-contents)
+
 ---
 
 ## Project structure
@@ -482,6 +537,8 @@ rag-assistants/
     ├── ARCHITECTURE.md     # Stack, data model, API contracts
     └── PROGRESS.md         # Development log and final state snapshot
 ```
+
+[↑ Back to top](#table-of-contents)
 
 ---
 

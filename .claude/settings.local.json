@@ -26,7 +26,27 @@
       "Bash(taskkill //F //PID 50940)",
       "Bash(taskkill //F //PID 30424)",
       "Bash(.venv/Scripts/python tests/fixtures/create_fixtures.py)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(python -m pytest tests/test_assistants.py tests/test_parsers.py tests/test_rag_prompt.py -v)",
+      "Bash(venv/Scripts/pytest tests/test_assistants.py tests/test_parsers.py tests/test_rag_prompt.py -v)",
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Bash(npx shadcn@latest add button dialog input textarea popover badge --yes)",
+      "Bash(npx shadcn@latest add sonner --yes)",
+      "Bash(npx tsc *)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_idk_behaviour.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_conversational_memory.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/ -v --ignore=tests/test_isolation.py -m \"not integration\")",
+      "Bash(python -m pytest tests/test_rag_prompt.py tests/test_conversational_memory.py tests/test_idk_behaviour.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_rag_prompt.py tests/test_conversational_memory.py tests/test_idk_behaviour.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_rag_prompt.py::test_with_context_calls_llm_and_includes_all_prompt_sections -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_rag_prompt.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/ -v --ignore=tests/test_isolation.py)",
+      "Bash(python -m pytest tests/test_assistants.py tests/test_rag_prompt.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_assistants.py tests/test_rag_prompt.py -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_ingestion_edge_cases.py -v)",
+      "Bash(python -m pytest tests/test_chat_edge_cases.py -v)",
+      "Bash(curl *)",
+      "PowerShell(npm install *)"
     ]
   }
 }
