@@ -2,6 +2,8 @@
 
 Una plataforma full-stack de Retrieval-Augmented Generation (RAG) para construir asistentes de IA aislados basados en documentos privados, con memoria persistente y citas verificables.
 
+🇬🇧 *También disponible en inglés: [README.md](README.md)*
+
 ## TL;DR
 
 - Plataforma **multi-asistente RAG** con aislamiento estricto (**1 índice vectorial por asistente**)
@@ -44,8 +46,6 @@ Una plataforma full-stack de Retrieval-Augmented Generation (RAG) para construir
 Una plataforma *full-stack* de Generación Aumentada por Recuperación (RAG) que te permite crear múltiples asistentes de IA aislados, cada uno fundamentado en su propio conjunto de documentos, con memoria conversacional persistente y citas estructuradas.
 
 Una construcción enfocada, a nivel de producción, entregada en 7 días sobre **Azure AI Foundry** y **Azure AI Search**, con un backend en **FastAPI** y un frontend en **React**.
-
-🇬🇧 *También disponible en inglés: [README.md](README.md)*
 
 ---
 
