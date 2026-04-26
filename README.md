@@ -18,7 +18,50 @@ Built as a university project in 7 days on top of **Azure AI Foundry** and **Azu
 
 ## Architecture
 
-![Architecture diagram](docs/architecture.png)
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "curve": "basis"}}}%%
+flowchart LR
+
+    subgraph FE["Frontend  ·  React / Vite  ·  :5173"]
+        UI([Browser UI])
+    end
+
+    subgraph BE["Backend  ·  FastAPI  ·  :8000"]
+        direction TB
+        ROUTERS["Routers\nassistants · documents · chat"]
+        SERVICES["Services\ningestion · retrieval · rag · query_rewriter"]
+    end
+
+    DB[("SQLite\nassistants · documents\nconversations · messages")]
+
+    subgraph AZ["Azure Services"]
+        direction TB
+        EMB["Foundry Embeddings\ntext-embedding-3-small"]
+        LLM["Foundry LLM\ngpt-4o-mini"]
+        SRCH["AI Search\nassistant-{id_hex}\none index per assistant"]
+    end
+
+    %% ── Non-chat flows (dotted) ───────────────────────────────────
+    UI -.->|"assistant CRUD"| ROUTERS
+    UI -.->|"document upload / delete"| ROUTERS
+    ROUTERS -.->|"read / write"| DB
+    SERVICES -.->|"ingestion: embed chunks  batch=16"| EMB
+    SERVICES -.->|"ingestion: create index · upload chunks"| SRCH
+
+    %% ── Chat request flow  ① – ⑧ ─────────────────────────────────
+    UI -->|"① POST /conversations/{id}/messages"| ROUTERS
+    ROUTERS -->|"② load assistant + history"| DB
+    ROUTERS -->|"③ persist user message"| DB
+    ROUTERS -->|"→ generate_response"| SERVICES
+    SERVICES -->|"③b rewrite query\n(LLM call, skipped on no-search intent)"| LLM
+    SERVICES -->|"④ embed rewritten query"| EMB
+    EMB -->|"query vector"| SRCH
+    SRCH -->|"top-k chunks  hybrid · semantic rerank"| SERVICES
+    SERVICES -->|"⑤ build prompt  ·  ⑥ call LLM"| LLM
+    LLM -->|"⑦ response + [CITE:id]"| SERVICES
+    SERVICES -->|"⑧ persist assistant message\n(is_fallback + implicit citations)"| DB
+    ROUTERS -->|"↩ message + citations"| UI
+```
 
 ### Components
 
