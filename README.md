@@ -20,7 +20,7 @@ A full-stack Retrieval-Augmented Generation (RAG) platform for building isolated
 
 ## Table of Contents
 
-- [Proyect summary](#Proyect-summary)
+- [Project summary](#project-summary)
 - [What it does](#what-it-does)
 - [Why this matters](#why-this-matters)
 - [Screenshots & Demo](#screenshots--demo)
@@ -36,7 +36,7 @@ A full-stack Retrieval-Augmented Generation (RAG) platform for building isolated
 - [Technical documentation](#technical-documentation)
 ---
 
-## Proyect summary
+## Project summary
 
 A full-stack Retrieval-Augmented Generation (RAG) platform that lets you create multiple isolated AI assistants, each grounded in its own document set, with persistent conversational memory and structured citations.
 

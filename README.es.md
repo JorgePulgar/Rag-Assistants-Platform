@@ -1,5 +1,46 @@
 # Plataforma de Asistentes RAG
 
+Una plataforma full-stack de Retrieval-Augmented Generation (RAG) para construir asistentes de IA aislados basados en documentos privados, con memoria persistente y citas verificables.
+
+## TL;DR
+
+- Plataforma **multi-asistente RAG** con aislamiento estricto (**1 índice vectorial por asistente**)
+- Construida con **Azure AI Foundry + Azure AI Search + FastAPI + React**
+- Soporta **memoria conversacional**, **reescritura de queries** y **citas estructuradas**
+- Diseñada para **minimizar alucinaciones** mediante arquitectura retrieval-first y lógica de fallback
+- Autoalojable: los documentos permanecen dentro del entorno Azure de la organización
+
+## Funcionalidades clave
+
+- **Aislamiento estricto**: un índice de Azure AI Search por asistente (sin contaminación cruzada)
+- **RAG conversacional**: preguntas de seguimiento mediante reescritura de queries con LLM
+- **Respuestas fundamentadas**: cada respuesta incluye citas verificables de documentos
+- **Fallback anti-alucinaciones**: no se llama al LLM si falla el retrieval
+- **Memoria persistente**: conversaciones almacenadas en SQLite y recuperables
+
+---
+
+## Índice
+
+- [Resumen del proyecto](#resumen-del-proyecto)
+- [Qué hace](#qué-hace)
+- [Por qué importa](#por-qué-importa)
+- [Capturas y demo](#capturas-y-demo)
+- [Estadísticas](#estadísticas)
+- [Arquitectura](#arquitectura)
+- [Stack tecnológico](#stack-tecnológico)
+- [Decisiones de diseño](#decisiones-de-diseño)
+- [Setup local](#setup-local)
+- [Cómo se garantizan los principios clave](#cómo-se-garantizan-los-principios-clave)
+- [Limitaciones conocidas](#limitaciones-conocidas)
+- [Proceso de desarrollo y aprendizajes](#proceso-de-desarrollo-y-aprendizajes)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Documentación técnica](#documentación-técnica)
+
+---
+
+## Resumen del proyecto
+
 Una plataforma *full-stack* de Generación Aumentada por Recuperación (RAG) que te permite crear múltiples asistentes de IA aislados, cada uno fundamentado en su propio conjunto de documentos, con memoria conversacional persistente y citas estructuradas.
 
 Una construcción enfocada, a nivel de producción, entregada en 7 días sobre **Azure AI Foundry** y **Azure AI Search**, con un backend en **FastAPI** y un frontend en **React**.
@@ -54,6 +95,9 @@ No es una búsqueda federada a través de todos los SaaS de la empresa; solo se 
 
 Lo que *sí* es, es una base técnica sólida para productos verticales construidos sobre ella: las mismas primitivas, especializadas para un dominio.
 
+[↑ Volver al índice](#índice)
+
+
 ---
 
 ## Capturas de pantalla y Demo
@@ -101,6 +145,8 @@ Un tercer turno ("Muchas gracias. Puedes también ponerme más ejemplos") activa
 Al hacer clic en una píldora `[1]` se abre un *popover* que muestra la cita estructurada: nombre del documento de origen (`BOE-IMPUESTO-SOBRE-EL-VALOR-AÑADIDO-...pdf`), número de página y el texto exacto del fragmento recuperado del índice de Azure AI Search. El texto del fragmento se muestra literalmente, sin reescritura por parte del LLM, para que el usuario pueda verificar la respuesta con la fuente.
 
 **Pruébalo tú mismo** — clona el repositorio, introduce tus credenciales de Azure y tendrás tu propio asistente fundamentado ejecutándose localmente en menos de cinco minutos.
+
+[↑ Volver al índice](#índice)
 
 ---
 
@@ -188,6 +234,8 @@ flowchart LR
 9. **Posprocesamiento**: los marcadores `[CITE:id]` se reemplazan por etiquetas `[1]`, `[2]`; cada una se resuelve en un objeto de cita estructurado. Si el LLM olvidó citar a pesar de tener contexto, los 3 fragmentos principales recuperados se exponen como fuentes implícitas (`implicit: true`).
 10. El mensaje del asistente (con citas y la bandera `is_fallback`) se persiste y se devuelve al frontend.
 
+[↑ Volver al índice](#índice)
+
 ---
 
 ## Stack tecnológico
@@ -267,6 +315,8 @@ Azure AI Search se consulta con búsqueda por palabras clave (analizador españo
 **Por qué**: la búsqueda por palabras clave captura coincidencias exactas de términos que la búsqueda vectorial pasa por alto (por ejemplo, números de artículos, nombres propios). La búsqueda vectorial captura paráfrasis semánticas que las palabras clave omiten. El reranking semántico como paso final selecciona el subconjunto más relevante. La combinación es sustancialmente mejor que cualquier método individual para documentos legales y técnicos en español.
 
 *Fuente*: `RAG_SPEC.md` §"Retrieval", `clients/azure_search.py`.
+
+[↑ Volver al índice](#índice)
 
 ---
 
@@ -354,6 +404,9 @@ pytest -v
 
 56 pruebas unitarias cubren analizadores (*parsers*), construcción del *prompt* RAG, aislamiento de índices, memoria conversacional, posprocesamiento de citas y casos extremos de la API. Las pruebas de integración (`test_isolation.py`) interactúan con recursos reales de Azure y requieren un `.env` configurado.
 
+[↑ Volver al índice](#índice)
+
+
 ---
 
 ## Cómo se cumplen las garantías principales
@@ -405,6 +458,8 @@ En ambos casos, `citations=[]` y el frontend aplica un estilo de advertencia ám
 - **Sin streaming** — las respuestas del LLM se devuelven en un solo bloque después de que se completa la generación. La latencia escala con la longitud de la respuesta.
 - **Sin control de versiones de documentos** — eliminar y volver a subir un documento cambia sus IDs de fragmento, dejando huérfanas las referencias de citas en mensajes de conversaciones antiguas.
 
+[↑ Volver al índice](#índice)
+
 ---
 
 ## Proceso de desarrollo y lecciones aprendidas
@@ -452,6 +507,8 @@ El principio constitucional n.º 3 establecía que la recuperación vacía nunca
 **Cómo el sistema dejó de ser binario.** Dos adiciones posteriores suavizaron esta rigidez sin eliminar la garantía. La T047i (omitir recuperación cuando no hay intención de búsqueda) significa que el reescritor ahora clasifica las charlas triviales y las enruta directamente al LLM con el historial de conversación, saltándose la recuperación por completo; así, un "gracias" obtiene una respuesta natural. La T057b (citas implícitas) maneja el caso inverso donde el LLM tiene contexto pero olvida citar: en lugar de elegir entre una respuesta perfecta y una contingencia preprogramada, el backend muestra los 3 fragmentos recuperados principales como fuentes implícitas. La contingencia preprogramada ahora solo se dispara en el caso para el que fue realmente diseñada: una pregunta sustantiva sobre algo que genuinamente no está en el corpus.
 
 **Lo que evaluaría hoy.** Una versión donde el LLM maneje incluso el caso de recuperación vacía, pero con un *prompt* de sistema mucho más estricto: *"si CONTEXT está vacío, reconoce la limitación en lenguaje natural; si el usuario estaba conversando, simplemente responde conversacionalmente sin mencionar documentos"*. Esto unificaría el comportamiento bajo una única fuente de la verdad (el *prompt*) y eliminaría la rama de caso especial en el backend, a costa de una llamada adicional a `gpt-4o-mini` en la ruta vacía y un pequeño riesgo residual de alucinación que el *prompt* mitiga. Para un MVP de una semana donde la prioridad era la seguridad demostrable, la elección original fue la correcta. Para un producto de más largo recorrido, el compromiso (*tradeoff*) se invierte.
+
+[↑ Volver al índice](#índice)
 
 ---
 
