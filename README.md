@@ -2,7 +2,9 @@
 
 A full-stack Retrieval-Augmented Generation (RAG) platform that lets you create multiple isolated AI assistants, each grounded in its own document set, with persistent conversational memory and structured citations.
 
-Built as a university project in 7 days on top of **Azure AI Foundry** and **Azure AI Search**, with a **FastAPI** backend and a **React** frontend.
+A focused, production-grade build delivered in 7 days on top of **Azure AI Foundry** and **Azure AI Search**, with a **FastAPI** backend and a **React** frontend.
+
+🇪🇸 *También disponible en español: [README.es.md](README.es.md)*
 
 ---
 
@@ -13,6 +15,106 @@ Built as a university project in 7 days on top of **Azure AI Foundry** and **Azu
 - **Chat with citations** — every answer is grounded in the assistant's documents. Inline `[1]`, `[2]` markers link to expandable citation cards showing the source document, page, and the relevant excerpt.
 - **Persistent memory** — conversations are stored in SQLite. Reload the page, restart the server, reboot the machine — your conversation continues exactly where it left off.
 - **"I don't know" by design** — if retrieval returns no relevant chunks, the LLM is never called. A hardcoded informative message is returned instead.
+
+---
+
+## Why this matters
+
+### The problem
+
+Organisations and professionals accumulate large volumes of internal documentation — regulations, contracts, manuals, procedures, product sheets — that their teams rarely consult because it's slow to search and scattered across drives. Critical knowledge ends up trapped in PDFs rather than accessible as conversation. Onboarding bottlenecks on senior staff who answer the same questions over and over. And when teams *do* turn to general-purpose chatbots for help, those chatbots fabricate plausible-sounding but incorrect answers about the very documents that govern the business — a hallucination about a tax regulation costs money; one about a clinical protocol can cost more.
+
+### Who has this problem
+
+The professionals who most need reliable AI are the ones who can least afford a fabricated answer: tax and legal firms, compliance and risk teams, HR departments interpreting internal policy, technical support handling repeated questions from product manuals, mortgage brokers tracking shifting product conditions across partner banks, fintech operators in regulated workflows, engineering teams onboarding new hires into large codebases. The shared pattern is *specific, evolving knowledge that admits no errors*.
+
+### Why generic ChatGPT isn't enough
+
+ChatGPT doesn't know the company's private documents, can't cite verifiable sources, mixes knowledge across domains with no separation between (say) a tax assistant and a sales assistant, is frozen at its training cutoff so it can't reflect updated regulations, and — for many organisations — isn't a viable destination for confidential documents under GDPR or sector-specific privacy rules.
+
+### How this project addresses it
+
+This project is not a finished vertical product, but it implements the architectural primitives those products need:
+
+- **Isolated knowledge bases per assistant** — a dedicated Azure AI Search index per assistant, not a shared index with filters. Cross-contamination is structurally impossible (see *Key design decisions §1*).
+- **Verifiable citations on every answer** — document, page, and exact chunk text, surfaced in the UI as expandable pills so users can audit answers against the source.
+- **Honest about gaps** — explicit "I don't know" when retrieval returns nothing relevant, instead of fabricating (see *Key design decisions §3*).
+- **Conversational memory that handles follow-ups** — referential questions like "expand point 2" or "what if it were the other case" work naturally, via LLM-based query rewriting (see *Key design decisions §2*).
+- **Multilingual** — answers in the user's language regardless of the document language.
+- **Self-hostable on the organisation's own Azure tenant** — documents never leave it.
+- **Adaptable without retraining** — change the knowledge base by uploading or deleting documents. No fine-tuning, no ML pipeline.
+
+### Concrete use cases
+
+A tax firm uploads the current tax code and Treasury manuals, and the assistant answers client questions with citations to the applicable article. An HR team turns a 200-page employee handbook into an assistant that handles leave, benefits, and remote-work queries. A regulated fintech operator gives first-line ops a compliance assistant covering internal KYC/AML procedures. A software vendor reduces repetitive support tickets with an assistant that knows the API docs and common-case patterns. A mortgage broker has an assistant that covers each partner bank's current mortgage conditions, available during the client call. An engineering team shrinks time-to-first-contribution with an assistant that knows the internal codebase docs.
+
+### What it's NOT
+
+It is not a federated search across every company SaaS — only documents explicitly uploaded are searchable. It does not replace the human expert in critical decisions; it's an accelerator, not a substitute. It has no knowledge beyond the uploaded documents — no cookbook uploaded, no recipes. It does not handle images or audio in this version (no OCR, no speech-to-text). It has no per-user access control in the MVP, which is documented as a known limitation. And it is deliberately not an enterprise out-of-the-box product.
+
+What it *is* is a solid technical foundation for vertical products built on top of it — the same primitives, specialised for a domain.
+
+---
+
+## Screenshots & Demo
+
+**Empty state — assistant selector**
+
+![Empty state](docs/screenshots/home.PNG)
+
+The landing view shows the persistent assistant sidebar on the left (with the `+ New` button) and a centered empty state in the main panel prompting the user to select or create an assistant. The dark/light mode toggle sits in the top-right corner of the header.
+
+**Create assistant dialog**
+
+![New assistant dialog](docs/screenshots/new_Assistant.PNG)
+
+A shadcn/ui modal collects the three fields needed to instantiate an assistant: a name, an optional description (rendered as the sidebar subtitle), and a free-form `Instructions` block that becomes the assistant's system prompt. Submitting the form atomically creates the SQLite row and the dedicated Azure AI Search index.
+
+**Assistant detail — instructions, documents, conversations**
+
+![Assistant detail](docs/screenshots/assistant.PNG)
+
+The detail view exposes the assistant's instructions, a drag-and-drop document uploader, and the indexed document list. Each document card shows its filename, ingestion date, and an `Indexed` status badge confirming that chunks have been embedded and uploaded to that assistant's Azure AI Search index. Edit and delete actions sit in the header.
+
+**Conversations list**
+
+![Conversations list](docs/screenshots/assistant_2.PNG)
+
+Below the documents block, the assistant's conversation history is listed chronologically. Every conversation is stored in SQLite with all its messages, citations, and `is_fallback` flags — selecting one resumes the chat exactly where it was left.
+
+**Chat with citations and conversational memory**
+
+![Chat with citations](docs/screenshots/chat_1.PNG)
+
+The first turn shows a substantive question answered with a grounded response and a `[1]` citation pill. The second turn ("Puedes expandir un poco más acerca de esto último?") is a referential follow-up: the query rewriter resolves "esto último" against the prior turn before retrieval runs, so the elaboration stays on-topic instead of drifting.
+
+**Multi-turn elaboration**
+
+![Multi-turn chat](docs/screenshots/chat_2.PNG)
+
+A third turn ("Muchas gracias. Puedes también ponerme más ejemplos") triggers the EXEMPLIFY elaboration mode — the LLM generates additional examples grounded in the same retrieved context, again attaching a `[1]` citation pill.
+
+**Expanded citation pill**
+
+![Citation popover](docs/screenshots/chat_3.PNG)
+
+Clicking a `[1]` pill opens a popover showing the structured citation: source document name (`BOE-IMPUESTO-SOBRE-EL-VALOR-AÑADIDO-...pdf`), page number, and the exact chunk text retrieved from the Azure AI Search index. The chunk text is displayed verbatim — no LLM rewriting — so the user can verify the answer against the source.
+
+**Try it yourself** — clone the repo, drop in your Azure credentials, and have your own grounded assistant running locally in under five minutes.
+
+---
+
+## Stats
+
+| Metric | Value |
+|--------|-------|
+| Total commits | 57 |
+| Backend Python LOC | 2,632 |
+| Frontend TypeScript / TSX LOC | 1,499 (88 `.ts` + 1,411 `.tsx`) |
+| Docs Markdown LOC | 2,157 |
+| Test files | 8 |
+| Unit tests | **56 passed, 0 failed, 0 skipped** (27 s) |
+| Bugs found and fixed in Phase 6 audit | 9 of 9 (B1–B9, see *Known limitations*) |
 
 ---
 
@@ -305,6 +407,54 @@ In both cases, `citations=[]` and the frontend applies an amber warning style to
 
 ---
 
+## Development process & lessons learned
+
+This project was built with Claude Code as the primary executor under close human supervision, using a small set of context documents (`CONSTITUTION.md`, `RAG_SPEC.md`, `ARCHITECTURE.md`, `TASKS.md`, `CLAUDE.md`) as the contract between sessions. A handful of failure modes surfaced during the build, each resolved both at the code level and at the process level. This section documents what broke, why, and what I changed to keep it from happening again.
+
+### Phase 5 bugs: lazy index creation and broken referential memory
+
+The first hard lesson came when Phase 4 closed with every task ticked `[x]` and Phase 5 immediately surfaced two serious bugs.
+
+**Bug 1 — 500 on empty assistants.** Sending a message to an assistant with no documents returned a generic 500 instead of the hardcoded "I don't know" response. Root cause: the Azure AI Search index was being created lazily, on the first document upload. Querying a non-existent index raised `ResourceNotFoundError`, which propagated unhandled. This silently violated the constitutional principle that *creating an assistant must create its index* — index existence was a postcondition of `POST /assistants`, not of the first upload.
+
+**The fix** (T047b) was architectural, not defensive: I moved index creation from `services/ingestion.py` into `services/assistant_service.py`'s create path, transactionally with the SQLite row. The Azure index is now eagerly created when the assistant is created, with defensive `ResourceNotFoundError` handling in retrieval as a belt-and-braces guard.
+
+**Bug 2 — referential follow-ups retrieved garbage.** A follow-up like *"give me more detail on point 2"* embeds with no topical signal. The raw vector retrieved irrelevant chunks, and the assistant answered confidently about something completely unrelated, even though the prior turn was sitting in its prompt history.
+
+The really uncomfortable part of this was the diagnosis: T032 (the memory smoke test) had been marked `[x]` without an actual test artefact. There was a note in `PROGRESS.md` saying "verified manually", but the manual check used self-contained questions ("what does clause 3 say?" → "what are the penalties?") rather than referential follow-ups. The bug walked straight past the smoke test.
+
+### Query rewriting: the standard fix for conversational RAG
+
+The fix for Bug 2 was to implement query rewriting (T047c). Before retrieval, a small LLM call (the same `gpt-4o-mini` deployment) takes the last 4 messages of conversation history plus the current user message and rewrites it into a self-contained search query. *"Give me more detail on point 2"* becomes something like *"non-EU established traders VAT external regime"*. That enriched query is what gets embedded and sent to Azure AI Search.
+
+This is the same pattern used by ChatGPT, Claude.ai, and Perplexity for conversational RAG — the user's literal message is for the LLM, but the retrieval system needs a reformulated, context-resolved version of it. The cost is one extra `gpt-4o-mini` call per message (~300–600 ms, a few hundred tokens), which is negligible compared to the UX gain. It is feature-flagged behind `QUERY_REWRITING_ENABLED` and skipped when the rewriter classifies the message as no-search intent (e.g., "thanks", "shorter please") — chit-chat goes straight to the LLM with history but no retrieval.
+
+### Three recurring friction patterns with AI-assisted development
+
+Across the seven days, three patterns of failure showed up repeatedly when delegating implementation to Claude Code. Each was diagnosed, fixed at the process level, and documented in `CLAUDE.md` with the specific incident as historical evidence so future sessions understand *why* the rule exists.
+
+**Premature task marking.** Tasks closed as `[x]` without a verifiable artefact — most notably T032 (memory smoke test, no real test) and T048 (the end-to-end run that turned into a static code review instead of an actual run). The fix was an explicit rule: *smoke tests and manual checks require artefacts*. A task can only be marked done if there is a reproducible artefact — pytest output, a re-runnable script, a curl sequence with expected responses. A note in `PROGRESS.md` saying "verified manually" is not an artefact.
+
+**Silent pivots.** When a task could not be executed as written, Claude Code tended to invent a near-equivalent and complete *that* instead of stopping. T048 is the canonical example: it asked for an end-to-end run with real documents, and the executor delivered a static code review (which did find seven real bugs, B1–B7, all subsequently fixed — but it was not what the task asked for). The fix was the rule *human-dependent tasks must pause, not pivot*: if a task requires action only the human can take (uploading documents, configuring Azure, clicking through a browser), the executor must stop and ask, not substitute. Affected tasks now carry a `[BLOCKS ON: Jorge action]` tag.
+
+**Batch commits per phase.** A tendency to close an entire phase with one giant commit, losing the granularity that makes a portfolio repo useful for review. The fix was reinforcing `CONSTITUTION.md` §7 — *one commit per coherent task* — and citing Phase 4 explicitly as the antipattern in `CLAUDE.md`.
+
+The pattern across all three: when a process rule failed, I added the rule explicitly with the specific incident as evidence, rather than relying on it being implicit.
+
+### The hardcoded "I don't know" decision: right for the MVP, less binary today
+
+Constitutional principle #3 was that empty retrieval should never reach the LLM — instead, return a hardcoded informative message. Looking back at it now, the decision was correct for the original context but worth re-examining.
+
+**Why it was right at the time.** Three reasons. First, hard guarantee against hallucination: with zero chunks, an LLM can drift into general-knowledge territory even with a strict system prompt — hardcoding the response makes fabrication architecturally impossible on the empty-retrieval path. Second, cost and latency: skipping a doomed LLM call saves ~500 ms and a few cents per request. Third, demoability: being able to say "this exact string always appears when retrieval is empty" is more defensible to a reviewer than "the LLM usually says something like *I don't have information*".
+
+**What I didn't anticipate.** That assumption — *empty retrieval = the user asked something out of corpus* — turned out to be wrong in a few legitimate cases. Conversational messages like "thanks" or "shorter please" produce empty retrieval too, and getting back *"I don't have enough information in my documents..."* in response to "thanks" is jarring.
+
+**How the system stopped being binary.** Two later additions softened the rigidity without removing the guarantee. T047i (skip retrieval on no-search intent) means the rewriter now classifies chit-chat and routes it directly to the LLM with conversation history, bypassing retrieval entirely — so "thanks" gets a natural response. T057b (implicit citations) handles the inverse case where the LLM has context but forgets to cite: rather than choosing between a perfect answer and a hardcoded fallback, the backend surfaces the top-3 retrieved chunks as implicit sources. The hardcoded fallback now fires only in the case it was actually designed for: a substantive question about something genuinely not in the corpus.
+
+**What I'd evaluate today.** A version where the LLM handles even the empty-retrieval case, but with a much stricter system prompt: *"if CONTEXT is empty, acknowledge the limitation in natural language; if the user was being conversational, just respond conversationally without mentioning documents"*. This would unify behaviour under a single source of truth (the prompt) and remove the special-case branch in the backend, at the cost of one extra `gpt-4o-mini` call on the empty path and a small residual hallucination risk that the prompt mitigates. For a one-week MVP where the priority was provable safety, the original choice was right. For a longer-running product, the tradeoff flips.
+
+---
+
 ## Project structure
 
 ```
@@ -343,7 +493,3 @@ For deeper context on design decisions:
 - [`docs/RAG_SPEC.md`](docs/RAG_SPEC.md) — full RAG pipeline specification with rationale for every parameter
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — stack, data model, API contracts
 - [`docs/PROGRESS.md`](docs/PROGRESS.md) — development log and final project state snapshot
-
----
-
-*See [`README.es.md`](README.es.md) for a Spanish-language summary.*
