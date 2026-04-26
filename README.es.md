@@ -2,7 +2,7 @@
 
 Una plataforma full-stack de Retrieval-Augmented Generation (RAG) para construir asistentes de IA aislados basados en documentos privados, con memoria persistente y citas verificables.
 
-🇬🇧 *También disponible en inglés: [README.md](README.md)*
+> 🇬🇧 *También disponible en inglés: [README.md](README.md)*
 
 ## TL;DR
 
